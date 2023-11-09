@@ -54,7 +54,7 @@ uint64 sys_user_allocate_page() {
 //
 uint64 sys_user_free_page(uint64 va) {
   user_vm_unmap((pagetable_t)current->pagetable, va, PGSIZE, 1);
-  
+
   return 0;
 }
 
