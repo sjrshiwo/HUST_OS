@@ -495,7 +495,7 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
   free_dinode->size=0;
   free_dinode->type=R_FILE;
   free_dinode->nlinks=1;
-  free_dinode->blocks=1;
+  free_dinode->blocks=0;
   // panic("You need to implement the code of populating a disk inode in lab4_1.\n" );
 
   // DO NOT REMOVE ANY CODE BELOW.
@@ -650,7 +650,10 @@ int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
   // the method of returning is to popular proper members of "dir", more specifically,
   // dir->name and dir->inum.
   // note: DO NOT DELETE CODE BELOW PANIC.
-  panic("You need to implement the code for reading a directory entry of rfs in lab4_2.\n" );
+  strcpy(dir->name,p_direntry->name);
+  // *(dir->name)=*(p_direntry->name);
+  dir->inum=p_direntry->inum;
+  // panic("You need to implement the code for reading a directory entry of rfs in lab4_2.\n" );
 
   // DO NOT DELETE CODE BELOW.
   (*offset)++;
