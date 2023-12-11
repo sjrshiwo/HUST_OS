@@ -42,6 +42,10 @@ int printu(const char* s, ...) {
   // make a syscall to implement the required functionality.
   return do_user_call(SYS_user_print, (uint64)buf, n, 0, 0, 0, 0, 0);
 }
+int print_backtrace(int n)
+{
+  return do_user_call(SYS_user_lab1,n, 0, 0, 0, 0, 0, 0);
+}
 
 //
 // applications need to call exit to quit execution.

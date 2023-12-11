@@ -5,6 +5,8 @@
 #include "process.h"
 
 #define MAX_CMDLINE_ARGS 64
+#define FUNC 0x00000012//sym的info=globy+func
+
 
 // elf header structure
 typedef struct elf_header_t {
@@ -24,6 +26,33 @@ typedef struct elf_header_t {
   uint16 shnum;     /* Section header table entry count */
   uint16 shstrndx;  /* Section header string table index */
 } elf_header;
+
+typedef struct elf_section_header_t {
+  uint32    sh_name;        /* Section name (string tbl index) */
+  uint32    sh_type;        /* Section type */
+  uint64    sh_flags;       /* Section flags */
+  uint64    sh_addr;        /* Section virtual addr at execution */
+  uint64    sh_offset;      /* Section file offset */
+  uint64    sh_size;        /* Section size in bytes */
+  uint32    sh_link;        /* Link to another section */
+  uint32    sh_info;        /* Additional section information */
+  uint64    sh_addralign;       /* Section alignment */
+  uint64    sh_entsize;     /* Entry size if section holds table */
+} elf_section;
+
+typedef struct elf_sym_t{
+  uint32 sy_name;
+  uint8  sy_info;//高四位是symbol binding 低四位type
+  uint8 sy_other;
+  uint16 sy_shndx;
+  uint64 sy_value;
+  uint64 sy_size; 
+}elf_sym;
+
+typedef struct symbol_t{
+  char name[32];
+  uint64 offset;
+}symbol;
 
 // Program segment header.
 typedef struct elf_prog_header_t {
@@ -57,7 +86,7 @@ typedef struct elf_ctx_t {
 
 elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
-
+elf_status elf_copyhead(elf_ctx *ctx);
 void load_bincode_from_host_elf(process *p);
 
 #endif

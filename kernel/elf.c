@@ -8,6 +8,10 @@
 #include "riscv.h"
 #include "spike_interface/spike_utils.h"
 
+symbol sh[32];
+elf_section ini;
+uint64 cot;
+uint64 id[64];
 typedef struct elf_info_t {
   spike_file_t *f;
   process *p;
@@ -32,7 +36,7 @@ static uint64 elf_fpread(elf_ctx *ctx, void *dest, uint64 nb, uint64 offset) {
   return spike_file_pread(msg->f, dest, nb, offset);
 }
 
-//
+//unsigned cha
 // init elf_ctx, a data structure that loads the elf.
 //
 elf_status elf_init(elf_ctx *ctx, void *info) {
@@ -43,13 +47,104 @@ elf_status elf_init(elf_ctx *ctx, void *info) {
 
   // check the signature (magic value) of the elf
   if (ctx->ehdr.magic != ELF_MAGIC) return EL_NOTELF;
-
+ 
   return EL_OK;
+}
+
+
+//there3
+
+elf_status elf_copyhead(elf_ctx *ctx) {
+
+
+//得到shrstrndx的地址从而得到查询所有节头表的基地址
+uint64 shr_offset=ctx->ehdr.shoff+ctx->ehdr.shstrndx*sizeof(elf_section); //uint64
+uint64 sect_count=ctx->ehdr.shnum;
+
+  uint64 i;
+  elf_section tp,sym,str,shr;
+  elf_fpread(ctx,(void *)&shr,sizeof(shr),shr_offset);
+  char shr_sy[shr.sh_size];
+  elf_fpread(ctx,&shr_sy,shr.sh_size,shr.sh_offset);
+  //cot=sect_count;
+  for(i=0;i<sect_count;i++)
+  {
+    elf_fpread(ctx,(void *)&tp,sizeof(tp),ctx->ehdr.shoff+i*ctx->ehdr.shentsize);
+    
+    if(strcmp(shr_sy+tp.sh_name,".symtab")==0)
+    {
+        sym=tp;//sym节头表中存符号和对应地址
+        
+    }
+    else if(strcmp(shr_sy+tp.sh_name,".strtab")==0)
+    {
+        str=tp;
+    }
+  }
+  //ini=sym;
+  //在strtab中找sym地址对应的源程序符
+  // elf_sym
+  elf_sym sym_t;//每个符号项
+  //存所有函数项offset+name
+  int j=0;
+  for(i=0;i<sym.sh_size/(sizeof(elf_sym));i++)
+  {
+    //将当前符号项i暂存到sym_t中
+    elf_fpread(ctx,(void *)&sym_t,sizeof(elf_sym),sym.sh_offset+i*sizeof(elf_sym));
+      id[i]=sym_t.sy_info;
+    if(sym_t.sy_info==FUNC)//确认是symatb中的func部分
+    {
+      // ini=sym;
+      // cot=0x0000000000000002;
+      //写symbol数组value部分为地址
+      sh[j].offset=sym_t.sy_value;
+      //在strtab中查找名字
+      char name_x[32];
+      elf_fpread(ctx,(void *)name_x,sizeof(name_x),str.sh_offset+sym_t.sy_name);
+      strcpy(sh[j++].name,name_x);
+         
+    }
+    sh[j].offset=0x1;
+  }
+  
+  return EL_OK;
+}
+void sort(symbol sh[])
+{
+    symbol s;  
+    int i,j,len=0;
+    for(i=0;i<=31;i++)
+    {
+      if(sh[i].offset==0x1)
+      {
+        len=i;
+        break;
+      }
+       
+    }
+    
+    //冒泡排序大号在后
+    for(i=0;i<len;i++)
+    {
+      for(j=0;j<len-i;j++)
+      {
+        if(sh[j].offset>sh[j+1].offset)
+        {
+          s.offset=sh[j].offset;
+          strcpy(s.name,sh[j].name);
+          sh[j].offset=sh[j+1].offset;
+          strcpy(sh[j].name,sh[j+1].name);
+          sh[j+1].offset=s.offset;
+          strcpy(sh[j+1].name,s.name);
+        }
+      }
+    }   
 }
 
 //
 // load the elf segments to memory regions as we are in Bare mode in lab1
 //
+
 elf_status elf_load(elf_ctx *ctx) {
   // elf_prog_header structure is defined in kernel/elf.h
   elf_prog_header ph_addr;
@@ -96,7 +191,7 @@ static size_t parse_args(arg_buf *arg_bug_msg) {
   int arg = 1;  // skip the PKE OS kernel string, leave behind only the application name
   for (size_t i = 0; arg + i < pk_argc; i++)
     arg_bug_msg->argv[i] = (char *)(uintptr_t)pk_argv[arg + i];
-
+  
   //returns the number of strings after PKE kernel in command line
   return pk_argc - arg;
 }
@@ -130,6 +225,9 @@ void load_bincode_from_host_elf(process *p) {
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
+  //
+  elf_copyhead(&elfloader);
+  sort(sh);
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
 
