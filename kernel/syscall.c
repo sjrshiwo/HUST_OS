@@ -74,9 +74,9 @@ ssize_t sys_user_lab1(uint64 a1)
       ar1= *(uint64 *)(ar1-16);
       n+=1;
   }
-//  for(i=0;i<=3;i++)
-//  {
-//   sprint("%ld号地址内容:%lx\n",i,*(uint64*)(0x810fff70-i*8));
+//  for(i=0;i<=10;i++)
+//   {
+//   sprint("%ld号地址内容:%lx\n",i,*(uint64 *)(0x810fff70-i*8));
 //      //读栈
 //  }
 // 读elf
