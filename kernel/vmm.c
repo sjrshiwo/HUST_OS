@@ -20,7 +20,7 @@ int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm)
   uint64 first, last;
   pte_t *pte;
 
-  for (first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
+  for (first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1,PGSIZE);
       first <= last; first += PGSIZE, pa += PGSIZE) {
     if ((pte = page_walk(page_dir, first, 1)) == 0) return -1;
     if (*pte & PTE_V)
@@ -68,7 +68,7 @@ pte_t *page_walk(pagetable_t page_dir, uint64 va, int alloc) {
       pt = (pagetable_t)PTE2PA(*pte);
     } else { //PTE invalid (not exist).
       // allocate a page (to be the new pagetable), if alloc == 1
-      if( alloc && ((pt = (pte_t *)alloc_page(1)) != 0) ){
+      if( alloc && ((pt = (pte_t *)alloc_page(PGSIZE)) != 0) ){
         memset(pt, 0, PGSIZE);
         // writes the physical address of newly allocated page to pte, to establish the
         // page table tree.

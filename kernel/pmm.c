@@ -14,8 +14,10 @@ extern uint64 g_mem_size;
 
 static uint64 free_mem_start_addr;  //beginning address of free memory
 static uint64 free_mem_end_addr;    //end address of free memory (not included)
+uint64 c[100][100];//c是存储所有c[1]=1
 
 typedef struct node {
+
   struct node *next;
 } list_node;
 
@@ -36,12 +38,13 @@ static void create_freepage_list(uint64 start, uint64 end) {
 // place a physical page at *pa to the free list of g_free_mem_list (to reclaim the page)
 //
 void free_page(void *pa) {
-  if (((uint64)pa % PGSIZE) != 0 || (uint64)pa < free_mem_start_addr || (uint64)pa >= free_mem_end_addr)
+  if ((uint64)pa < free_mem_start_addr || (uint64)pa >= free_mem_end_addr)
     panic("free_page 0x%lx \n", pa);
-
   // insert a physical page to g_free_mem_list
   list_node *n = (list_node *)pa;
+
   n->next = g_free_mem_list.next;
+
   g_free_mem_list.next = n;
 }
 
@@ -55,6 +58,7 @@ void *alloc_page(void) {
 
   return (void *)n;
 }
+ 
 
 //
 // pmm_init() establishes the list of free physical pages according to available
