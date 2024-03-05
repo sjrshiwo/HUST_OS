@@ -86,7 +86,7 @@ typedef struct process_t {
   struct process_t *parent;
   // next queue element
   struct process_t *queue_next;
-
+  int sem;//信号量
   // accounting. added @lab3_3
   int tick_count;
 }process;

@@ -15,7 +15,8 @@
 #include "sched.h"
 
 #include "spike_interface/spike_utils.h"
-
+int l[100];//存信号量
+int len=0;//信号量到多少
 //
 // implement the SYS_user_print syscall
 //
@@ -95,7 +96,43 @@ ssize_t sys_user_yield() {
 
   return 0;
 }
+int sys_user_sem_new(int a1)
+{
+  len++;
+  l[len]=a1;
+  sprint("%d %d\n",len,l[len]);
+  return len;
+}
+int sys_user_sem_P(int a1)
+{
+  //sprint("l[1]:%d\n",l[1]);
+  //sprint("l[2]:%d\n",l[2]);
+  //sprint("l[3]:%d\n",l[3]);
 
+  if(l[a1]-1>=0)
+  {
+    l[a1]-=1;
+    //sprint("111\n");
+  }
+  else
+  {
+    l[a1]-=1;
+    //sprint("charu\n");
+    current->sem=a1;
+    //current->status=BLOCKED;
+    insert_to_wait_queue(current);
+    schedule();
+  }
+  return 1;
+}
+//insert_to_ready_queue
+int sys_user_sem_V(int a1)
+{
+  l[a1]+=1;
+  wake_wait_queue(a1);
+  //if(l[a1]>0) l[a1]=l[a1]-1;
+  return 1;
+}
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -115,6 +152,12 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_fork();
     case SYS_user_yield:
       return sys_user_yield();
+    case SYS_user_sem_new:
+      return sys_user_sem_new(a1);
+    case SYS_user_sem_P:
+      return sys_user_sem_P(a1);
+    case SYS_user_sem_V:
+      return sys_user_sem_V(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

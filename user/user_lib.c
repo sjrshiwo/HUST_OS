@@ -43,6 +43,21 @@ int printu(const char* s, ...) {
   return do_user_call(SYS_user_print, (uint64)buf, n, 0, 0, 0, 0, 0);
 }
 
+//lab3-challenge2
+
+int  sem_new(int i)
+{
+  return do_user_call(SYS_user_sem_new, i, 0, 0, 0, 0, 0, 0);
+}
+int sem_P(int a1)
+{
+  return do_user_call(SYS_user_sem_P, a1, 0, 0, 0, 0, 0, 0);
+}
+int sem_V(int a1)
+{
+  return do_user_call(SYS_user_sem_V, a1, 0, 0, 0, 0, 0, 0);
+}
+
 //
 // applications need to call exit to quit execution.
 //
