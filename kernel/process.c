@@ -38,7 +38,7 @@ process* current = NULL;
 void switch_to(process* proc) {
   assert(proc);
   current = proc;
-
+  // sprint("yes\n");
   // write the smode_trap_vector (64-bit func. address) defined in kernel/strap_vector.S
   // to the stvec privilege register, such that trap handler pointed by smode_trap_vector
   // will be triggered when an interrupt occurs in S mode.
@@ -64,7 +64,7 @@ void switch_to(process* proc) {
 
   // make user page table. macro MAKE_SATP is defined in kernel/riscv.h. added @lab2_1
   uint64 user_satp = MAKE_SATP(proc->pagetable);
-
+  //sprint("yes\n");
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
   return_to_user(proc->trapframe, user_satp);
@@ -89,7 +89,7 @@ void init_proc_pool() {
 process* alloc_process() {
   // locate the first usable process structure
   int i;
-
+  //sprint("yes!\n");
   for( i=0; i<NPROC; i++ )
     if( procs[i].status == FREE ) break;
 

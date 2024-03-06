@@ -108,6 +108,7 @@ spike_file_t* spike_file_openat(int dirfd, const char* fn, int flags, int mode) 
   } else {
     spike_file_decref(f);
     return ERR_PTR(ret);
+    
   }
 }
 

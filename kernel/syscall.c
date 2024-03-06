@@ -14,9 +14,48 @@
 #include "vmm.h"
 #include "sched.h"
 #include "proc_file.h"
-
+#include "elf.h"
 #include "spike_interface/spike_utils.h"
 
+void syscall_load_bincode_from_host_elf(process *p,char *path) {
+  //arg_buf arg_bug_msg;
+
+  // retrieve command line arguements
+  //size_t argc = parse_args(&arg_bug_msg);
+  // if (!argc) panic("You need to specify the application program!\n");
+
+  // sprint("Application: %s\n", arg_bug_msg.argv[0]);
+
+  //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
+  elf_ctx elfloader;
+  // elf_info is defined above, used to tie the elf file and its corresponding process.
+  elf_info_vs info; 
+  // sprint("11111\n");
+  //char * pathpa = (char*)user_va_to_pa((pagetable_t)(p->pagetable),arg_bug_msg.argv[0]);
+  
+  info.f = vfs_open(path, O_RDONLY);
+  //sprint("open is ok\n");
+  //sprint("11111\n");
+  info.p = p;
+  // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
+  if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
+
+  // init elfloader context. elf_init() is defined above.
+  
+  if (elf_init(&elfloader, &info) != EL_OK)
+    panic("fail to init elfloader.\n");
+ 
+  // load elf. elf_load() is defined above.
+  if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+  sprint("11111\n");
+  // entry (virtual, also physical in lab1_x) address
+  p->trapframe->epc = elfloader.ehdr.entry;
+
+  // close the host spike file
+  vfs_close( info.f );
+  //sprint("yes,,,\n");
+  sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+}
 //
 // implement the SYS_user_print syscall
 //
@@ -219,6 +258,23 @@ ssize_t sys_user_unlink(char * vfn){
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
+ssize_t sys_user_exec(char *s)
+{
+  //sprint("o\n");
+  char *path=s;
+  // sprint("%c\n",*s);
+  char* pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), s);
+  //sprint();
+  //sprint("%s\n",pathpa);
+  // int fd=do_open(pathpa,O_RDWR | O_CREAT);
+  //process *st=alloc_page();
+  // current
+  syscall_load_bincode_from_host_elf(current,pathpa);
+  // //sprint("fd:%d\n",fd);
+  // //sprint("0\n");
+  return -1;
+ 
+}
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
   switch (a0) {
     case SYS_user_print:
@@ -263,6 +319,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_link((char *)a1, (char *)a2);
     case SYS_user_unlink:
       return sys_user_unlink((char *)a1);
+    case SYS_user_exec:
+      return sys_user_exec((char *)a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

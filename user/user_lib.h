@@ -6,7 +6,7 @@
 #define _USER_LIB_H_
 #include "util/types.h"
 #include "kernel/proc_file.h"
-
+int exec(char *s);
 int printu(const char *s, ...);
 int exit(int code);
 void* naive_malloc();

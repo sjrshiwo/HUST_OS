@@ -3,8 +3,12 @@
 
 #include "util/types.h"
 #include "process.h"
-
+#include "vfs.h"
 #define MAX_CMDLINE_ARGS 64
+typedef struct elf_info_t_2 {
+  struct file *f;
+  process *p;
+} elf_info_vs;
 
 // elf header structure
 typedef struct elf_header_t {
