@@ -5,8 +5,11 @@
 #include "util/types.h"
 #include "kernel/riscv.h"
 #include "kernel/config.h"
+#include "kernel/sync_utils.h"
 #include "spike_interface/spike_utils.h"
-
+int all=2;
+int id=0;
+volatile int count=0;
 //
 // global variables are placed in the .data section.
 // stack0 is the privilege mode stack(s) of the proxy kernel on CPU(s)
@@ -40,10 +43,13 @@ riscv_regs g_itrframe;
 //
 void init_dtb(uint64 dtb) {
   // defined in spike_interface/spike_htif.c, enabling Host-Target InterFace (HTIF)
+ //sprint("111\n");
+  
   query_htif(dtb);
   if (htif) sprint("HTIF is available!\r\n");
 
   // defined in spike_interface/spike_memory.c, obtain information about emulated memory
+  //sprint("111\n");
   query_mem(dtb);
   sprint("(Emulated) memory size: %ld MB\n", g_mem_size >> 20);
 }
@@ -94,13 +100,17 @@ void m_start(uintptr_t hartid, uintptr_t dtb) {
   // init the spike file interface (stdin,stdout,stderr)
   // functions with "spike_" prefix are all defined in codes under spike_interface/,
   // sprint is also defined in spike_interface/spike_utils.c
+  if(hartid==0)
+  {
   spike_file_init();
+  init_dtb(dtb);
+    //sprint("count:%d\n",count);
+  }
+  sync_barrier(&count,NCPU);
   sprint("In m_start, hartid:%d\n", hartid);
-
+  write_tp(hartid);
   // init HTIF (Host-Target InterFace) and memory by using the Device Table Blob (DTB)
   // init_dtb() is defined above.
-  init_dtb(dtb);
-
   // save the address of trap frame for interrupt in M mode to "mscratch". added @lab1_2
   write_csr(mscratch, &g_itrframe);
 
@@ -126,6 +136,7 @@ void m_start(uintptr_t hartid, uintptr_t dtb) {
 
   // init timing. added @lab1_3
   timerinit(hartid);
+
 
   // switch to supervisor mode (S mode) and jump to s_start(), i.e., set pc to mepc
   asm volatile("mret");
