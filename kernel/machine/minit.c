@@ -109,6 +109,8 @@ void m_start(uintptr_t hartid, uintptr_t dtb) {
   sync_barrier(&count,NCPU);
   sprint("In m_start, hartid:%d\n", hartid);
   write_tp(hartid);
+  uint64 tp=read_tp();
+  //sprint("tp:%d\n",tp);
   // init HTIF (Host-Target InterFace) and memory by using the Device Table Blob (DTB)
   // init_dtb() is defined above.
   // save the address of trap frame for interrupt in M mode to "mscratch". added @lab1_2

@@ -25,7 +25,7 @@ extern void return_to_user(trapframe *, uint64 satp);
 process* current[2];
 
 // points to the first free page in our simple heap. added @lab2_2
-uint64 g_ufree_page = USER_FREE_ADDRESS_START;
+uint64 g_ufree_page[2] = {USER_FREE_ADDRESS_START,USER_FREE_ADDRESS_START};
 
 //
 // switch to a user-mode process
@@ -57,10 +57,10 @@ void switch_to(process* proc) {
 
   // set S Exception Program Counter (sepc register) to the elf entry pc.
   write_csr(sepc, proc->trapframe->epc);
-
+  uint64 sepc=read_csr(sepc);
   // make user page table. macro MAKE_SATP is defined in kernel/riscv.h. added @lab2_1
   uint64 user_satp = MAKE_SATP(proc->pagetable);
-
+  //sprint("tp:%d sepc:%x\n",tp,sepc);
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
   return_to_user(proc->trapframe, user_satp);

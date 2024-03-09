@@ -5,17 +5,17 @@
 #include "util/string.h"
 #include "memlayout.h"
 #include "spike_interface/spike_utils.h"
-
+#include "sync_utils.h"
 // _end is defined in kernel/kernel.lds, it marks the ending (virtual) address of PKE kernel
 extern char _end[];
 // g_mem_size is defined in spike_interface/spike_memory.c, it indicates the size of our
 // (emulated) spike machine. g_mem_size's value is obtained when initializing HTIF. 
 extern uint64 g_mem_size;
-
+volatile int count_5=1;
 static uint64 free_mem_start_addr;  //beginning address of free memory
 static uint64 free_mem_end_addr;    //end address of free memory (not included)
 
-int vm_alloc_stage[NCPU] = { 0 }; // 0 for kernel alloc, 1 for user alloc
+int vm_alloc_stage[NCPU] = { 0,0}; // 0 for kernel alloc, 1 for user alloc
 typedef struct node {
   struct node *next;
 } list_node;
@@ -51,12 +51,15 @@ void free_page(void *pa) {
 // Allocates only ONE page!
 //
 void *alloc_page(void) {
+  sem_P(&count_5);
   list_node *n = g_free_mem_list.next;
   uint64 hartid = 0;
-  if (vm_alloc_stage[hartid]) {
-    sprint("hartid = %ld: alloc page 0x%x\n", hartid, n);
+  uint64 tp=read_tp();
+  if (vm_alloc_stage[tp]) {
+    sprint("hartid = %ld: alloc page 0x%x\n", tp, n);
   }
   if (n) g_free_mem_list.next = n->next;
+  sem_V(&count_5);
   return (void *)n;
 }
 
@@ -85,7 +88,7 @@ void pmm_init() {
   free_mem_end_addr = g_mem_size + DRAM_BASE;
   sprint("free physical memory address: [0x%lx, 0x%lx] \n", free_mem_start_addr,
     free_mem_end_addr - 1);
-
+  //物理地址8000a000 87ffffff
   sprint("kernel memory manager is initializing ...\n");
   // create the list of free pages
   create_freepage_list(free_mem_start_addr, free_mem_end_addr);
