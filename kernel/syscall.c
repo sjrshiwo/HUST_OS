@@ -15,7 +15,7 @@
 #include "sched.h"
 
 #include "spike_interface/spike_utils.h"
-
+uint64 parent_pa;
 //
 // implement the SYS_user_print syscall
 //
@@ -44,6 +44,11 @@ ssize_t sys_user_exit(uint64 code) {
 //
 uint64 sys_user_allocate_page() {
   void* pa = alloc_page();
+  // sprint("--------\n");
+  // sprint("%x\n",(uint64)pa);
+  // sprint("--------\n");
+ //pa :87faf00
+  parent_pa=(uint64)pa;
   uint64 va;
   // if there are previously reclaimed pages, use them first (this does not change the
   // size of the heap)
@@ -57,6 +62,7 @@ uint64 sys_user_allocate_page() {
 
     current->mapped_info[HEAP_SEGMENT].npages++;
   }
+  sprint("parent_va:%x\n",va);
   user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
 
@@ -97,6 +103,7 @@ ssize_t sys_user_yield() {
 }
 ssize_t sys_user_printpa(uint64 va)
 {
+  //一个虚拟地址的8 9位为rsw未被使用可用来标记是不是写时复制场景
   uint64 pa = (uint64)user_va_to_pa((pagetable_t)(current->pagetable), (void*)va);
   sprint("%lx\n", pa);
   return 0;
