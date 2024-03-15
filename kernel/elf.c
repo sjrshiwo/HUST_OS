@@ -11,6 +11,10 @@
 #include "vfs.h"
 #include "spike_interface/spike_utils.h"
 
+symbol sh[32];
+ elf_sect_header ini;
+uint64 cot;
+uint64 id[64];
 typedef struct elf_info_t {
   struct file *f;
   process *p;
