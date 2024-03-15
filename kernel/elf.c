@@ -116,6 +116,92 @@ elf_status elf_load(elf_ctx *ctx) {
 
   return EL_OK;
 }
+elf_status elf_copyhead(elf_ctx *ctx) {
+
+
+//得到shrstrndx的地址从而得到查询所有节头表的基地址
+uint64 shr_offset=ctx->ehdr.shoff+ctx->ehdr.shstrndx*sizeof(elf_sect_header); //uint64
+uint64 sect_count=ctx->ehdr.shnum;
+
+  uint64 i;
+  elf_sect_header tp,sym,str,shr;
+  elf_fpread(ctx,(void *)&shr,sizeof(shr),shr_offset);
+  char shr_sy[shr.size];
+  elf_fpread(ctx,&shr_sy,shr.size,shr.offset);
+  //cot=sect_count;
+  for(i=0;i<sect_count;i++)
+  {
+    elf_fpread(ctx,(void *)&tp,sizeof(tp),ctx->ehdr.shoff+i*ctx->ehdr.shentsize);
+    
+    if(strcmp(shr_sy+tp.name,".symtab")==0)
+    {
+        sym=tp;//sym节头表中存符号和对应地址
+        
+    }
+    else if(strcmp(shr_sy+tp.name,".strtab")==0)
+    {
+        str=tp;
+    }
+  }
+  //ini=sym;
+  //在strtab中找sym地址对应的源程序符
+  // elf_sym
+  elf_sym sym_t;//每个符号项
+  //存所有函数项offset+name
+  int j=0;
+  for(i=0;i<sym.size/(sizeof(elf_sym));i++)
+  {
+    //将当前符号项i暂存到sym_t中
+    elf_fpread(ctx,(void *)&sym_t,sizeof(elf_sym),sym.offset+i*sizeof(elf_sym));
+      id[i]=sym_t.sy_info;
+    if(sym_t.sy_info==FUNC)//确认是symatb中的func部分
+    {
+      // ini=sym;
+      // cot=0x0000000000000002;
+      //写symbol数组value部分为地址
+      sh[j].offset=sym_t.sy_value;
+      //在strtab中查找名字
+      char name_x[32];
+      elf_fpread(ctx,(void *)name_x,sizeof(name_x),str.offset+sym_t.sy_name);
+      strcpy(sh[j++].name,name_x);
+         
+    }
+    sh[j].offset=0x1;
+  }
+  
+  return EL_OK;
+}
+void sort(symbol sh[])
+{
+    symbol s;  
+    int i,j,len=0;
+    for(i=0;i<=31;i++)
+    {
+      if(sh[i].offset==0x1)
+      {
+        len=i;
+        break;
+      }
+       
+    }
+    
+    //冒泡排序大号在后
+    for(i=0;i<len;i++)
+    {
+      for(j=0;j<len-i;j++)
+      {
+        if(sh[j].offset>sh[j+1].offset)
+        {
+          s.offset=sh[j].offset;
+          strcpy(s.name,sh[j].name);
+          sh[j].offset=sh[j+1].offset;
+          strcpy(sh[j].name,sh[j+1].name);
+          sh[j+1].offset=s.offset;
+          strcpy(sh[j+1].name,s.name);
+        }
+      }
+    }   
+}
 
 //
 // load the elf of user application, by using the spike file interface.
