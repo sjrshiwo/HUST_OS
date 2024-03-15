@@ -30,6 +30,18 @@ typedef struct elf_header_t {
 #define SEGMENT_EXECUTABLE 0x1
 #define SEGMENT_WRITABLE   0x2
 
+typedef struct elf_sect_header_t{
+    uint32 name;
+    uint32 type;
+    uint64 flags;
+    uint64 addr;
+    uint64 offset;
+    uint64 size;
+    uint32 link;
+    uint32 info;
+    uint64 addralign;
+    uint64 entsize;
+} elf_sect_header;
 // Program segment header.
 typedef struct elf_prog_header_t {
   uint32 type;   /* Segment type */

@@ -19,7 +19,7 @@
 
 
 extern symbol sh[32];
-extern elf_section ini;
+extern elf_sect_header ini;
 extern uint64 cot;
 extern uint64 id[64];
 
