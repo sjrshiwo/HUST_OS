@@ -42,6 +42,21 @@ typedef struct elf_sect_header_t{
     uint64 addralign;
     uint64 entsize;
 } elf_sect_header;
+
+typedef struct elf_sym_t{
+  uint32 sy_name;
+  uint8  sy_info;//高四位是symbol binding 低四位type
+  uint8 sy_other;
+  uint16 sy_shndx;
+  uint64 sy_value;
+  uint64 sy_size; 
+}elf_sym;
+
+typedef struct symbol_t{
+  char name[32];
+  uint64 offset;
+}symbol;
+
 // Program segment header.
 typedef struct elf_prog_header_t {
   uint32 type;   /* Segment type */
