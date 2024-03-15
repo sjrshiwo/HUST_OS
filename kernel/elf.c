@@ -225,7 +225,8 @@ void load_bincode_from_host_elf(process *p, char *filename) {
 
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
-
+  elf_copyhead(&elfloader);
+  sort(sh);
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
 

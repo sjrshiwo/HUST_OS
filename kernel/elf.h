@@ -5,7 +5,7 @@
 #include "process.h"
 
 #define MAX_CMDLINE_ARGS 64
-
+#define FUNC 0x00000012//sym的info=globy+func
 // elf header structure
 typedef struct elf_header_t {
   uint32 magic;
