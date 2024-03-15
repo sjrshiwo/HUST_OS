@@ -28,6 +28,7 @@ int opendir_u(const char *pathname);
 int readdir_u(int fd, struct dir *dir);
 int mkdir_u(const char *pathname);
 int closedir_u(int fd);
+int print_backtrace(int n);
 
 // added @ lab4_3
 int link_u(const char *fn1, const char *fn2);

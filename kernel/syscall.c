@@ -371,6 +371,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_wait(a1);
     case SYS_user_exec:
       return sys_user_exec((char *)a1,(char *)a2);
+    case SYS_user_lab1_challenge1:
+      return  ;
     default:
       panic("Unknown syscall %ld \n", a0);
   }
