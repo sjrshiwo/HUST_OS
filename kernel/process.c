@@ -35,7 +35,7 @@ process* current = NULL;
 //
 // switch to a user-mode process
 //
-void switch_to(process* proc) {
+void  switch_to(process* proc) {
   assert(proc);
   current = proc;
 
@@ -167,6 +167,12 @@ int free_process( process* proc ) {
   // since proc can be current process, and its user kernel stack is currently in use!
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
+  for( int i=0; i<NPROC; i++ )
+    if( procs[i].pid==proc->pid)
+    {
+      procs[i].status=ZOMBIE;
+    }
+   
   proc->status = ZOMBIE;
 
   return 0;
@@ -243,6 +249,8 @@ int do_fork( process* parent)
         user_vm_map((pagetable_t)child->pagetable,parent->mapped_info[i].va,PGSIZE,lookup_pa((pagetable_t)parent->pagetable,parent->mapped_info[i].va),prot_to_type(PROT_READ | PROT_EXEC, 1));
         // panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
         // after mapping, register the vm region (do not delete codes below!)
+        sprint("do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",(uint64)lookup_pa((pagetable_t)parent->pagetable,parent->mapped_info[i].va),(uint64)parent->mapped_info[i].va);
+
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
         child->mapped_info[child->total_mapped_region].npages =parent->mapped_info[i].npages;
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
@@ -257,4 +265,81 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+ssize_t process_wait(int pid)
+{
+  int i=0,j=0,flag=0;//
+  if(pid==-1)
+  {
+    // sprint("0000\n");
+    for(i=0;i<NPROC;i++)
+    {
+      //sprint("0000\n");
+      if(procs[i].parent!=NULL)
+      {
+        //procs[i].parent->pid未经过赋值
+        
+        //sprint("%d\n",procs[i].parent->pid);
+        if(procs[i].parent==current)//找到子进程
+       { 
+           //sprint("101\n");
+            flag=1;
+          //有前面的插入函数可知 status=FREE时说明这个位置还没有进程因此我们只需判断子进程是否FREE过了
+          if(procs[i].status==ZOMBIE)//子进程调用结束是僵尸进程
+          {
+            procs[i].status==FREE;
+            //代表一个子进程已经处理
+            return procs[i].pid;
+          }
+          break;
+        } 
+      }
+      
+    }
+    //sprint("1111\n");
+    if(flag==1)
+    {
+     
+      insert_to_wait_queue(current);
+       
+      schedule(0);
+      //sprint("101\n");
+      return procs[i].pid;
+    }
+  }
+  else if(pid>0)
+  {
+    for(i=0;i<NPROC;i++)
+    {
+      if(procs[i].parent!=NULL)
+      {
+
+      
+      if(procs[i].parent->pid==current->pid)//找到子进程
+      {
+        if(procs[i].pid==pid)
+        { 
+          flag=1;
+          //有前面的插入函数可知 status=FREE时说明这个位置还没有进程因此我们只需判断子进程是否FREE过了
+          if(procs[i].status==ZOMBIE)//子进程调用结束是僵尸进程
+          {
+            procs[i].status==FREE;
+            return pid;
+          }
+          break;    
+        }   
+      }
+      }
+    }
+    if(flag==1)
+    {
+      insert_to_wait_queue(current);//两个都在it里因此会出现碰到process0以为当前调度已经完成的情况
+      schedule(0);
+      return pid;
+    }
+    //return -1;
+  }
+  else 
+    return -1;
+  return -1;
 }

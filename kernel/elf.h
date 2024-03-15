@@ -65,4 +65,9 @@ elf_status elf_load(elf_ctx *ctx);
 
 void load_bincode_from_host_elf(process *p, char *filename);
 
+typedef struct elf_info_vs {
+  struct file *f;
+  process *p;
+} elf_info_vs;
+
 #endif

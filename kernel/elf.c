@@ -27,10 +27,17 @@ static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 siz
   void *pa = alloc_page();
   if (pa == 0) panic("uvmalloc mem alloc falied\n");
 
-  memset((void *)pa, 0, PGSIZE);
+  pte_t *pte;
+  pte = page_walk((pagetable_t)msg->p->pagetable, elf_va, 1);
+  if(*pte & PTE_V)
+  {
+    //sprint("va:%x\n", elf_va);
+    user_vm_unmap((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, 1);
+
+  }
   user_vm_map((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ | PROT_EXEC, 1));
-
+  //sprint("222\n");
   return pa;
 }
 
@@ -64,7 +71,7 @@ elf_status elf_init(elf_ctx *ctx, void *info) {
 elf_status elf_load(elf_ctx *ctx) {
   // elf_prog_header structure is defined in kernel/elf.h
   elf_prog_header ph_addr;
-  int i, off;
+  int i, off; 
 
   // traverse the elf program segment headers
   for (i = 0, off = ctx->ehdr.phoff; i < ctx->ehdr.phnum; i++, off += sizeof(ph_addr)) {
@@ -96,7 +103,7 @@ elf_status elf_load(elf_ctx *ctx) {
       sprint( "CODE_SEGMENT added at mapped info offset:%d\n", j );
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = DATA_SEGMENT;
-      sprint( "DATA_SEGMENT added at mapped info offset:%d\n", j );
+      sprint( "DATA_SEGMENT added at mapped info offset:%d\n", j);
     }else
       panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
 

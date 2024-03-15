@@ -4,7 +4,14 @@
 
 
 int main(int argc, char *argv[]) {
+
+  //printu("main:%x\n",argv);
+  //printu("main:%x\n",argv[0]);
+
+
   char *new_dir = argv[0];
+  
+
   printu("\n======== mkdir command ========\n");
 
   mkdir_u(new_dir);

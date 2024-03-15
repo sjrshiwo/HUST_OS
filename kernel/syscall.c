@@ -14,9 +14,88 @@
 #include "vmm.h"
 #include "sched.h"
 #include "proc_file.h"
-
+#include "elf.h"
 #include "spike_interface/spike_utils.h"
 
+void syscall_load_bincode_from_host_elf(process *p,char *s,char *para) {
+  //arg_buf arg_bug_msg;
+
+  // retrieve command line arguements
+  //size_t argc = parse_args(&arg_bug_msg);
+  // if (!argc) panic("You need to specify the application program!\n");
+
+  // sprint("%c\n",*s);
+  char* path = (char*)user_va_to_pa((pagetable_t)(p->pagetable), s);
+  sprint("Application: %s\n", path);
+
+  //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
+  elf_ctx elfloader;
+  // elf_info is defined above, used to tie the elf file and its corresponding process.
+  elf_info_vs info;
+  // sprint("11111\n");
+  //char * pathpa = (char*)user_va_to_pa((pagetable_t)(p->pagetable),arg_bug_msg.argv[0]);
+  //user_vm_unmap((pagetable_t)(p->pagetable),p->user_heap.heap_bottom,PGSIZE,1);
+  
+  char *pa=user_va_to_pa((pagetable_t)(p->pagetable),para);
+  char *pathpa[2];
+  uint64 vsp;
+  vsp=p->trapframe->regs.sp;
+  vsp-=8;
+  
+  //char *st;
+  //sprint("st:%x\n",st);
+  char * sp=user_va_to_pa((pagetable_t)(p->pagetable),(void *)vsp);
+  memcpy((void *)sp,(void *)pa,strlen(pa));
+  //sprint("%x\n",strlen(pa));
+  uint64 vsp1=vsp;
+  vsp-=8;
+  //sprint("%x\n",sp);
+  sp=user_va_to_pa((pagetable_t)(p->pagetable),(void *)vsp);
+ // sprint("%x\n",sp);
+  uint64 *sp2=(uint64 *)sp;
+  //sprint("vsp:%x\n",vsp);
+  *sp2=(vsp+8);
+  //sprint("sp:%x\n",*sp);
+  //sprint("sp:%x\n",*(uint64 *)sp);
+  //sp=user_va_to_pa((pagetable_t)(p->pagetable),(void *)vsp);
+  //*sp=(vsp)
+  int len=1;
+  p->trapframe->regs.sp-=16;
+  p->trapframe->regs.a0=(uint64)len;
+  
+  //sprint("%x\n",p->trapframe->regs.a0);
+  p->trapframe->regs.a1=(uint64)(vsp);
+  //sprint("%x\n",vsp);
+  info.f = vfs_open(path, O_RDONLY);
+  //sprint("open is ok\n");
+  //sprint("11111\n");
+  info.p = p;
+  // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
+  if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
+
+  // init elfloader context. elf_init() is defined above.
+  
+  if (elf_init(&elfloader, &info) != EL_OK)
+    panic("fail to init elfloader.\n");
+ 
+  // load elf. elf_load() is defined above.
+  if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+  //sprint("11111\n");
+  // entry (virtual, also physical in lab1_x) address
+  p->trapframe->epc = elfloader.ehdr.entry;
+  
+  
+
+  //sprint("a1 is ok\n");
+  // close the host spike file
+  vfs_close( info.f );
+
+  //sprint("pathpa[1]:%s\n",pathpa[1]);
+  
+  //sprint("yes,,,\n");
+  sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+  //switch_to(current);
+}
 //
 // implement the SYS_user_print syscall
 //
@@ -29,6 +108,8 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   return 0;
 }
 
+
+
 //
 // implement the SYS_user_exit syscall
 //
@@ -36,7 +117,9 @@ ssize_t sys_user_exit(uint64 code) {
   sprint("User exit with code:%d.\n", code);
   // reclaim the current process, and reschedule. added @lab3_1
   free_process( current );
-  schedule();
+  // if(current->pid==0)
+  //   sprint("yes_free\n");
+  schedule(1);
   return 0;
 }
 
@@ -91,7 +174,7 @@ ssize_t sys_user_yield() {
   // we should set the status of currently running process to READY, insert it in
   // the rear of ready queue, and finally, schedule a READY process to run.
   insert_to_ready_queue(current);
-  schedule();
+  schedule(0);
   // panic( "You need to implement the yield syscall in lab3_2.\n" );
 
   return 0;
@@ -214,7 +297,28 @@ ssize_t sys_user_unlink(char * vfn){
   char * pfn = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn);
   return do_unlink(pfn);
 }
+ssize_t sys_user_wait(int pid)
+{
+  return process_wait(pid);
+}
 
+ssize_t sys_user_exec(char *s,char *para)
+{
+  //sprint("o\n");
+  char *path=s;
+
+  //sprint();
+  //sprint("%s\n",apathpa);
+  /// /bin/app_mkdir
+  // int fd=do_open(pathpa,O_RDWR | O_CREAT);
+  //process *st=alloc_page();
+  // current
+  syscall_load_bincode_from_host_elf(current,s,para);
+  // //sprint("fd:%d\n",fd);
+  // //sprint("0\n");
+  return -1;
+ 
+}
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -263,6 +367,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_link((char *)a1, (char *)a2);
     case SYS_user_unlink:
       return sys_user_unlink((char *)a1);
+    case  SYS_user_wait:
+      return sys_user_wait(a1);
+    case SYS_user_exec:
+      return sys_user_exec((char *)a1,(char *)a2);
     default:
       panic("Unknown syscall %ld \n", a0);
   }
