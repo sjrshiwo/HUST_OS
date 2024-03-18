@@ -47,6 +47,7 @@ void  switch_to(process* proc) {
   // set up trapframe values (in process structure) that smode_trap_vector will need when
   // the process next re-enters the kernel.
   proc->trapframe->kernel_sp = proc->kstack;      // process's kernel stack
+  //sprint("stap:%x\n",proc->trapframe->kernel_sp );
   proc->trapframe->kernel_satp = read_csr(satp);  // kernel page table
   proc->trapframe->kernel_trap = (uint64)smode_trap_handler;
 
@@ -67,6 +68,7 @@ void  switch_to(process* proc) {
 
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
+  //sprint("\n user_satp:%x \n",user_satp);
   return_to_user(proc->trapframe, user_satp);
 }
 
