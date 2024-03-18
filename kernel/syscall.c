@@ -25,6 +25,7 @@ extern uint64 id[64];
 
 ssize_t sys_user_lab1_challenge1(uint64 a1)
 {
+  
   uint64 n=1;
   uint64 i=0; 
   assert(current);
@@ -384,7 +385,9 @@ ssize_t sys_user_exec(char *s,char *para)
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
+  //("111\n");
   switch (a0) {
+   
     case SYS_user_print:
       return sys_user_print((const char*)a1, a2);
     case SYS_user_exit:

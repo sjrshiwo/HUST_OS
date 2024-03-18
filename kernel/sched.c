@@ -163,6 +163,7 @@ void schedule(int type) {
 
   current->status = RUNNING;
   sprint( "going to schedule process %d to run.\n", current->pid );
+  //sprint("111\n");
   switch_to( current );
 }
 

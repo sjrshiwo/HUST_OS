@@ -65,7 +65,7 @@ static size_t parse_args(arg_buf *arg_bug_msg) {
 //
 process* load_user_program() {
   process* proc;
-
+  //USER_STACK_TOP
   proc = alloc_process();
   sprint("User application is loading.\n");
 

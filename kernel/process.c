@@ -67,7 +67,11 @@ void  switch_to(process* proc) {
 
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
+  //sprint("111\n");
+  //sprint("sepc:%x\n", proc->trapframe->epc);
+  sprint("%x\n",user_satp);
   return_to_user(proc->trapframe, user_satp);
+  
 }
 
 //
@@ -154,7 +158,7 @@ process* alloc_process() {
   // initialize files_struct
   procs[i].pfiles = init_proc_file_management();
   sprint("in alloc_proc. build proc_file_management successfully.\n");
-
+  //sprint(" procs[i].kstack:%x\n",procs[i].kstack);
   // return after initialization.
   return &procs[i];
 }
