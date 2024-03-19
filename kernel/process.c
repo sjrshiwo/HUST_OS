@@ -70,9 +70,10 @@ void  switch_to(process* proc) {
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
   //sprint("111\n");
-  sprint("sepc:%x\n", proc->trapframe->epc);
+  //sprint("sepc:%x\n", proc->trapframe->epc);
   //sprint("%x\n",user_satp);
- 
+  //uint64 pa=*(uint64 *)user_va_to_pa(proc->pagetable,(void *)(0x116f8));
+  //sprint("%x\n",pa);
   return_to_user(proc->trapframe, user_satp);
   
 }
@@ -265,6 +266,25 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
         break;
+      case DATA_SEGMENT:
+      {
+      for (int j = 0; j < parent->mapped_info[i].npages; j++)
+      {
+        uint64 addr = lookup_pa(parent->pagetable, parent->mapped_info[i].va + j * PGSIZE);
+        char *newaddr = alloc_page();
+        memcpy(newaddr, (void *)addr, PGSIZE);
+        map_pages(child->pagetable, parent->mapped_info[i].va + j * PGSIZE, PGSIZE,
+                  (uint64)newaddr, prot_to_type(PROT_WRITE | PROT_READ, 1));
+      }
+
+      // after mapping, register the vm region (do not delete codes below!)
+      child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+      child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+      child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+      child->total_mapped_region++;
+      break;
+      }
     }
   }
 

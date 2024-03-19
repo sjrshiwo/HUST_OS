@@ -114,7 +114,7 @@ int s_start(void) {
   // the application code (elf) is first loaded into memory, and then put into execution
   // added @lab3_1
   insert_to_ready_queue( load_user_program() );
-  schedule(0);
+  schedule(1);
 
   // we should never reach here.
   return 0;
