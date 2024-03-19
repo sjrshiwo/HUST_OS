@@ -71,9 +71,50 @@ elf_status elf_init(elf_ctx *ctx, void *info) {
   return EL_OK;
 }
 
-
+void read_uleb128(uint64 *out, char **off) {
+    uint64 value = 0; int shift = 0; uint8 b;
+    for (;;) {
+        b = *(uint8 *)(*off); (*off)++;
+        value |= ((uint64)b & 0x7F) << shift;
+        shift += 7;
+        if ((b & 0x80) == 0) break;
+    }
+    if (out) *out = value;
+}
+void read_sleb128(int64 *out, char **off) {
+    int64 value = 0; int shift = 0; uint8 b;
+    for (;;) {
+        b = *(uint8 *)(*off); (*off)++;
+        value |= ((uint64_t)b & 0x7F) << shift;
+        shift += 7;
+        if ((b & 0x80) == 0) break;
+    }
+    if (shift < 64 && (b & 0x40)) value |= -(1 << shift);
+    if (out) *out = value;
+}
+// Since reading below types through pointer cast requires aligned address,
+// so we can only read them byte by byte
+void read_uint64(uint64 *out, char **off) {
+    *out = 0;
+    for (int i = 0; i < 8; i++) {
+        *out |= (uint64)(**off) << (i << 3); (*off)++;
+    }
+}
+void read_uint32(uint32 *out, char **off) {
+    *out = 0;
+    for (int i = 0; i < 4; i++) {
+        *out |= (uint32)(**off) << (i << 3); (*off)++;
+    }
+}
+void read_uint16(uint16 *out, char **off) {
+    *out = 0;
+    for (int i = 0; i < 2; i++) {
+        *out |= (uint16)(**off) << (i << 3); (*off)++;
+    }
+}
 void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
    process *p = ((elf_info *)ctx->info)->p;
+   
     p->debugline = debug_line;
     // directory name char pointer array
     p->dir = (char **)((((uint64)debug_line + length + 7) >> 3) << 3); int dir_ind = 0, dir_base;
@@ -99,53 +140,73 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
         }
         off++; addr_line regs; regs.addr = 0; regs.file = 1; regs.line = 1;
         // simulate the state machine op code
+       
         for (;;) {
             uint8 op = *(off++);
             switch (op) {
                 case 0: // Extended Opcodes
+                sprint("0\n");
                     read_uleb128(NULL, &off); op = *(off++);
                     switch (op) {
                         case 1: // DW_LNE_end_sequence
+                        sprint("11\n");
                             if (p->line_ind > 0 && p->line[p->line_ind - 1].addr == regs.addr) p->line_ind--;
+                            //sprint("22\n");
                             p->line[p->line_ind] = regs; p->line[p->line_ind].file += file_base - 1;
                             p->line_ind++; goto endop;
                         case 2: // DW_LNE_set_address
+                        sprint("22\n");
                             read_uint64(&regs.addr, &off); break;
                         // ignore DW_LNE_define_file
                         case 4: // DW_LNE_set_discriminator
+                            sprint("44\n");
                             read_uleb128(NULL, &off); break;
                     }
                     break;
                 case 1: // DW_LNS_copy
+                sprint("1\n");
                     if (p->line_ind > 0 && p->line[p->line_ind - 1].addr == regs.addr) p->line_ind--;
-                    p->line[p->line_ind] = regs; p->line[p->line_ind].file += file_base - 1;
+                    //问题出现在下面这句话 Misaligned Load!
+                    sprint("%d\n",p->line_ind);
+                    p->line[p->line_ind] = regs;  
+                    sprint("%d\n",  p->line[p->line_ind].file );
+                    p->line[p->line_ind].file += file_base - 1;
+                    sprint("!\n");
                     p->line_ind++; break;
+                
                 case 2: { // DW_LNS_advance_pc
+                sprint("2\n");
                             uint64 delta; read_uleb128(&delta, &off);
                             regs.addr += delta * dh->min_instruction_length;
                             break;
                         }
                 case 3: { // DW_LNS_advance_line
+                 sprint("3\n");
                             int64 delta; read_sleb128(&delta, &off);
                             regs.line += delta; break; } case 4: // DW_LNS_set_file
                         read_uleb128(&regs.file, &off); break;
                 case 5: // DW_LNS_set_column
+                 sprint("5\n");
                         read_uleb128(NULL, &off); break;
                 case 6: // DW_LNS_negate_stmt
                 case 7: // DW_LNS_set_basic_block
                         break;
                 case 8: { // DW_LNS_const_add_pc
+                 sprint("8\n");
+                
                             int adjust = 255 - dh->opcode_base;
                             int delta = (adjust / dh->line_range) * dh->min_instruction_length;
                             regs.addr += delta; break;
                         }
                 case 9: { // DW_LNS_fixed_advanced_pc
+                sprint("9\n");
                             uint16 delta; read_uint16(&delta, &off);
                             regs.addr += delta;
                             break;
                         }
                         // ignore 10, 11 and 12
                 default: { // Special Opcodes
+                sprint("default\n");
                              int adjust = op - dh->opcode_base;
                              int addr_delta = (adjust / dh->line_range) * dh->min_instruction_length;
                              int line_delta = dh->line_base + (adjust % dh->line_range);
@@ -156,7 +217,8 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
                              p->line_ind++; break;
                          }
             }
-        }
+        } 
+      
 endop:;
     }
     // for (int i = 0; i < p->line_ind; i++)
@@ -183,13 +245,18 @@ void elf_section_read(elf_ctx *ctx)
           //sprint("shoff:%x l:%x i:%d\n",ctx->ehdr.shoff,ctx->ehdr.shentsize,i);
           //sprint("debugname:%d\n",tp.name);
           elf_fpread(ctx,(void *)debug,tp.size,tp.offset);
-          sprint("%x\n",tp.offset);
+          //sprint("%x\n",tp.offset);
           debug_length=tp.size;
         }
     }
+    process *p = ((elf_info *)ctx->info)->p;
+    //sprint("line:%x\n",p->line_ind);
+    sprint("debuglenth:%d\n",debug_length);
+    sprint("debug:%x\n",debug);
+    //sprint("111\n");
     //sprint("%x\n",*(uint64 *)debug);
     make_addr_line(ctx,debug, debug_length);
-   
+    
     // process *p = ((elf_info *)ctx->info)->p;
     // for(i=0;i<=2;i++)
     //  sprint("addr:%x line:%x file:%x\n",p->line[i].addr,p->line[i].line,p->line[i].file);
@@ -345,7 +412,7 @@ void sort(symbol sh[])
 //
 void load_bincode_from_host_elf(process *p, char *filename) {
   sprint("Application: %s\n", filename);
-
+  
   //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
   elf_ctx elfloader;
   // elf_info is defined above, used to tie the elf file and its corresponding process.
@@ -363,9 +430,16 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
   //sprint("\np->pagetable:%x\n",p->pagetable);
-  elf_copyhead(&elfloader);
+  if(strcmp(filename,"/bin/app_backtrace")==0)
+  {
+    elf_copyhead(&elfloader);
+    sort(sh);
+  }
+  
   //sprint("\np->pagetable:%x\n",p->pagetable);
-  sort(sh);
+  
+  elf_section_read(&elfloader);
+
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
 
