@@ -11,7 +11,7 @@
 #include "vfs.h"
 #include "spike_interface/spike_utils.h"
 
-symbol sh[32];
+symbol sh[64];
  elf_sect_header ini;
 uint64 cot;
 uint64 id[64];
@@ -33,6 +33,7 @@ static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 siz
 
   pte_t *pte;
   pte = page_walk((pagetable_t)msg->p->pagetable, elf_va, 1);
+  //kassert(size < 2 * PGSIZE);
   if(*pte & PTE_V)
   {
     //sprint("va:%x\n", elf_va);
@@ -42,6 +43,7 @@ static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 siz
   user_vm_map((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ | PROT_EXEC, 1));
   //sprint("222\n");
+  
   return pa;
 }
 
@@ -118,7 +120,8 @@ elf_status elf_load(elf_ctx *ctx) {
 }
 elf_status elf_copyhead(elf_ctx *ctx) {
 
-
+ elf_info *msg = (elf_info *)ctx->info;
+ //sprint("\ncopyhead_pagetable:%x\n",msg->p->pagetable);
 //得到shrstrndx的地址从而得到查询所有节头表的基地址
 uint64 shr_offset=ctx->ehdr.shoff+ctx->ehdr.shstrndx*sizeof(elf_sect_header); //uint64
 uint64 sect_count=ctx->ehdr.shnum;
@@ -148,6 +151,7 @@ uint64 sect_count=ctx->ehdr.shnum;
   // elf_sym
   elf_sym sym_t;//每个符号项
   //存所有函数项offset+name
+  //sprint("\ncopyhead_pagetable:%x\n",msg->p->pagetable);
   int j=0;
   for(i=0;i<sym.size/(sizeof(elf_sym));i++)
   {
@@ -166,16 +170,20 @@ uint64 sect_count=ctx->ehdr.shnum;
       strcpy(sh[j++].name,name_x);
          
     }
+    
     sh[j].offset=0x1;
+    //sprint("offset:%x\n", &sh[j].offset);
+    //sprint("\ncopyhead_pagetable:%x\n",&msg->p->pagetable);
   }
-  
+  //sprint("j:%d\n",j);
+  //sprint("\ncopyhead_pagetable:%x\n",msg->p->pagetable);
   return EL_OK;
 }
 void sort(symbol sh[])
 {
     symbol s;  
     int i,j,len=0;
-    for(i=0;i<=31;i++)
+    for(i=0;i<=63;i++)
     {
       if(sh[i].offset==0x1)
       {
@@ -184,11 +192,11 @@ void sort(symbol sh[])
       }
        
     }
-    
+    //sprint("%d\n",len);
     //冒泡排序大号在后
-    for(i=0;i<len;i++)
+    for(i=0;i<len-1;i++)
     {
-      for(j=0;j<len-i;j++)
+      for(j=0;j<len-1-i;j++)
       {
         if(sh[j].offset>sh[j+1].offset)
         {
@@ -200,7 +208,12 @@ void sort(symbol sh[])
           strcpy(sh[j+1].name,s.name);
         }
       }
-    }   
+    }
+  for(i=0;i<=len-1;i++)
+  {
+    sprint("sh.name:%s sh.offset:%x\n",sh[i].name,sh[i].offset);
+  }   
+  //sprint("sh.name:%s sh.offset:%x\n",sh[i].name,sh[i].offset);
 }
 
 //
@@ -225,7 +238,9 @@ void load_bincode_from_host_elf(process *p, char *filename) {
 
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+  //sprint("\np->pagetable:%x\n",p->pagetable);
   elf_copyhead(&elfloader);
+  //sprint("\np->pagetable:%x\n",p->pagetable);
   sort(sh);
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;

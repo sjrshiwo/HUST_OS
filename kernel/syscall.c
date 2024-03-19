@@ -18,13 +18,14 @@
 #include "spike_interface/spike_utils.h"
 
 
-extern symbol sh[32];
+extern symbol sh[64];
 extern elf_sect_header ini;
 extern uint64 cot;
 extern uint64 id[64];
 
 ssize_t sys_user_lab1_challenge1(uint64 a1)
 {
+  //sprint("in syscall\n");
   
   uint64 n=1;
   uint64 i=0; 
@@ -37,29 +38,42 @@ ssize_t sys_user_lab1_challenge1(uint64 a1)
   //print的栈最高地址0x810fff70 0x810ffff70-8返回地址为0x8100000e即调用print的下一个地址 0x810ffff70-16为0x810fff80下一个函数栈为f7引用f8存f8的返回地址
   //栈标识的fp分别为0x810fff70 0x810fff80 0x810fff90 0x810fffa0...
   //
- uint64 ar1=current->trapframe->regs.s0+16;//s0寄存器保存函数调用的栈顶
+ //uint64 ar1=current->trapframe->regs.sp+16;//s0寄存器保存函数调用的栈顶
+ //sprint("%x\n",current->trapframe->regs.sp);
+
+ //10082对应的是print_trace的ra ra-8里面存的是fp
+ uint64 va=current->trapframe->regs.sp;
+  uint64 ar1=0;
+//sprint("%x\n",(va));
+// for(i=0;i<=20;i++)
+// {
+//   ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)current->trapframe->regs.sp+i*8);
+//   sprint("%d %x\n",i,(ar1));
+// }
+va=va+24;
+  ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)current->trapframe->regs.sp+3*8);
+
+
 //  for(i=0;i<=11;i++)
 //   sprint("%lx\n",sh[i].offset);
 //  sprint("%lx\n",*(uint64 *)(ar1-8));
    while(n<=a1)
     {
     
-   for(i=1;i<=sizeof(sh);i++)
+   for(i=0;sh[i].offset!=1;i++)
    {
-    
-      if(*(uint64 *)(ar1-8)>=sh[i].offset&&*(uint64 *)(ar1-8)<sh[i+1].offset)
+      //sprint("%x\n",sh[i].offset);
+      //sprint("%x\n",sh[i+1].offset);
+       //sprint("%x\n",*(uint64 *)(ar1-8));
+      if(ar1>=sh[i].offset&&ar1<sh[i+1].offset)
       {
-        //sprint("%ld",i);
-        if(strcmp(sh[i].name,"main")==0)
-        {
-          n=a1;
-        }
-        //sprint("%lx\n",*(uint64 *)ar1-8);
         sprint("%s\n",sh[i].name);
         break;
       }
      }
-      ar1= *(uint64 *)(ar1-16);
+     va=va+16;
+     ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current->pagetable),(void *) va);
+     //ar1= *(uint64 *)(ar1-16);
       n+=1;
   }
 //  for(i=0;i<=10;i++)

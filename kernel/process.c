@@ -48,6 +48,8 @@ void  switch_to(process* proc) {
   // the process next re-enters the kernel.
   proc->trapframe->kernel_sp = proc->kstack;      // process's kernel stack
   proc->trapframe->kernel_satp = read_csr(satp);  // kernel page table
+  //sprint("stap:%x\n",proc->trapframe->kernel_satp );
+  //sprint("pagetable:%x\n",proc->pagetable);
   proc->trapframe->kernel_trap = (uint64)smode_trap_handler;
 
   // SSTATUS_SPP and SSTATUS_SPIE are defined in kernel/riscv.h
@@ -69,7 +71,8 @@ void  switch_to(process* proc) {
   // note, return_to_user takes two parameters @ and after lab2_1.
   //sprint("111\n");
   //sprint("sepc:%x\n", proc->trapframe->epc);
-  sprint("%x\n",user_satp);
+  //sprint("%x\n",user_satp);
+ 
   return_to_user(proc->trapframe, user_satp);
   
 }
@@ -108,6 +111,7 @@ process* alloc_process() {
 
   // page directory
   procs[i].pagetable = (pagetable_t)alloc_page();
+  
   memset((void *)procs[i].pagetable, 0, PGSIZE);
 
   procs[i].kstack = (uint64)alloc_page() + PGSIZE;   //user kernel stack top
@@ -160,6 +164,7 @@ process* alloc_process() {
   sprint("in alloc_proc. build proc_file_management successfully.\n");
   //sprint(" procs[i].kstack:%x\n",procs[i].kstack);
   // return after initialization.
+  //sprint("alloc pagetable:%x\n",procs[i].pagetable);
   return &procs[i];
 }
 

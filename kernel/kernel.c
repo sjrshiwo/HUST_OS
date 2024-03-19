@@ -67,15 +67,19 @@ process* load_user_program() {
   process* proc;
   //USER_STACK_TOP
   proc = alloc_process();
+  
   sprint("User application is loading.\n");
 
   arg_buf arg_bug_msg;
 
+
   // retrieve command line arguements
   size_t argc = parse_args(&arg_bug_msg);
   if (!argc) panic("You need to specify the application program!\n");
-
+//sprint("\npagetable:%x\n",proc->pagetable);
+ //sprint("\ns0:%x\n",proc->trapframe->regs.s0);
   load_bincode_from_host_elf(proc, arg_bug_msg.argv[0]);
+  //sprint("\npagetable:%x\n",proc->pagetable);
   return proc;
 }
 
