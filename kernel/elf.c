@@ -209,10 +209,10 @@ void sort(symbol sh[])
         }
       }
     }
-  for(i=0;i<=len-1;i++)
-  {
-    sprint("sh.name:%s sh.offset:%x\n",sh[i].name,sh[i].offset);
-  }   
+  // for(i=0;i<=len-1;i++)
+  // {
+  //   sprint("sh.name:%s sh.offset:%x\n",sh[i].name,sh[i].offset);
+  // }   
   //sprint("sh.name:%s sh.offset:%x\n",sh[i].name,sh[i].offset);
 }
 

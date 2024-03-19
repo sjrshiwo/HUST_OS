@@ -52,7 +52,14 @@ void handle_mtimer_trap() {
 // stval: the virtual address that causes pagefault when being accessed.
 //
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
-  panic("handle_page_fault: %lx\n", stval);
+  sprint("handle_page_fault: %lx\n", stval);
+    if(stval<current->trapframe->regs.sp)
+    {
+     //超出用户栈
+    // if(stval<(uint64)0x7ffff000) 
+      // sprint("%lx\n",stval);
+    panic("this address is not available!");
+    }
   switch (mcause) {
     case CAUSE_STORE_PAGE_FAULT:
     {
