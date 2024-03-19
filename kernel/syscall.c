@@ -265,7 +265,25 @@ ssize_t sys_user_yield() {
 //
 ssize_t sys_user_open(char *pathva, int flags) {
   char* pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
-  return do_open(pathpa, flags);
+  char pathb[30];
+  if(*pathpa=='.'&&*(pathpa+1)=='.')
+  {
+    strcpy(pathb,current->pfiles->cwd->name);
+  }
+  else if(*pathpa=='.'&&*(pathpa+1)!='.')
+  {
+    strcpy(pathb,current->pfiles->cwd->name);
+    if(strcmp(pathb,"/")==0)//上级目录是根目录相对路径等于当前路径
+    {
+      strcpy(pathb,pathpa+1);
+    }
+    else 
+    {
+     strcat(pathb,pathpa+1);
+    }
+    //sprint("111\n");
+  }
+  return do_open(pathb, flags);
 }
 
 //
@@ -395,6 +413,30 @@ ssize_t sys_user_exec(char *s,char *para)
   return -1;
  
 }
+ssize_t sys_user_ccwd(char *path){
+  //char *path1=path;
+  char *path1=user_va_to_pa(current->pagetable,path);//查询到当前的进程路径
+  if(*path1=='.'&&*(path1+1)=='.')
+    strcpy(current->pfiles->cwd->name,"/");
+  else if(*path1=='.'&&*(path1+1)=='/')
+  {
+   //sprint("change1:%s\n",path1);
+    strcpy(current->pfiles->cwd->name,path1+1);
+    //sprint("change1:%s\n",path);
+    //strcpy(user)
+  }
+  return 0;
+}
+//路径读
+ssize_t sys_user_rcwd(char *path){
+  
+ 
+  //sprint("read1:%s\n",user_va_to_pa(current->pagetable,path))
+  //存在path时要放在实地址
+  strcpy((char*)user_va_to_pa(current->pagetable,path),current->pfiles->cwd->name);
+  //strcpy((char*)path,current->pfiles->cwd->name);
+  return 0;
+}
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -451,6 +493,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_exec((char *)a1,(char *)a2);
     case SYS_user_lab1_challenge1:
       return sys_user_lab1_challenge1(a1);
+    case SYS_user_ccwd:
+      return sys_user_ccwd((char *)a1);
+    case SYS_user_rcwd:
+      return sys_user_rcwd((char *)a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }
