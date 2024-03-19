@@ -106,11 +106,11 @@ USER_B_OBJS  		:= $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_B_CPPS)))
 
 USER_B_TARGET 	:= $(HOSTFS_ROOT)/bin/app_backtrace	
 
-USER_S_CPPS 		:= user/app_sum_sequence.c user/user_lib.c
+USER_S_CPPS 		:= user/app_sequence.c user/user_lib.c
 
 USER_S_OBJS  		:= $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_S_CPPS)))
 
-USER_S_TARGET 	:= $(HOSTFS_ROOT)/bin/app_sum_sequence
+USER_S_TARGET 	:= $(HOSTFS_ROOT)/bin/app_sequence
 
 
 #------------------------targets------------------------
