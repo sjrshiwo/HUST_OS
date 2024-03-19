@@ -80,9 +80,11 @@ struct file *get_opened_file(int fd) {
 // return: -1 on failure; non-zero file-descriptor on success.
 //
 int do_open(char *pathname, int flags) {
+ 
   struct file *opened_file = NULL;
+  sprint("do_open:%s\n",pathname);
   if ((opened_file = vfs_open(pathname, flags)) == NULL) return -1;
-
+ //sprint("111\n");
   int fd = 0;
   if (current->pfiles->nfiles >= MAX_FILES) {
     panic("do_open: no file entry for current process!\n");
@@ -97,9 +99,9 @@ int do_open(char *pathname, int flags) {
   memcpy(pfile, opened_file, sizeof(struct file));
 
   ++current->pfiles->nfiles;
+  
   return fd;
 }
-
 //
 // read content of a file ("fd") into "buf" for "count".
 // return: actual length of data read from the file.
