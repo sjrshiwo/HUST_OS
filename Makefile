@@ -112,6 +112,13 @@ USER_S_OBJS  		:= $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_S_CPPS)))
 
 USER_S_TARGET 	:= $(HOSTFS_ROOT)/bin/app_sequence
 
+USER_D_CPPS 		:= user/app_wait_challengex.c user/user_lib.c
+
+USER_D_OBJS  		:= $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_D_CPPS)))
+
+USER_D_TARGET 	:= $(HOSTFS_ROOT)/bin/app_wait_challengex
+
+
 
 #------------------------targets------------------------
 $(OBJ_DIR):
@@ -127,6 +134,7 @@ $(OBJ_DIR):
 	@-mkdir -p $(dir $(USER_O_OBJS))
 	@-mkdir -p $(dir $(USER_B_OBJS))
 	@-mkdir -p $(dir $(USER_S_OBJS))
+	@-mkdir -p $(dir $(USER_D_OBJS))
 	
 $(OBJ_DIR)/%.o : %.c
 	@echo "compiling" $<
@@ -199,16 +207,22 @@ $(USER_S_TARGET): $(OBJ_DIR) $(UTIL_LIB) $(USER_S_OBJS)
 	-@mkdir -p $(HOSTFS_ROOT)/bin
 	@$(COMPILE) --entry=main $(USER_S_OBJS) $(UTIL_LIB) -o $@
 	@echo "User app has been built into" \"$@\"	
+	
+$(USER_D_TARGET): $(OBJ_DIR) $(UTIL_LIB) $(USER_D_OBJS)
+	@echo "linking" $@	...	
+	-@mkdir -p $(HOSTFS_ROOT)/bin
+	@$(COMPILE) --entry=main $(USER_D_OBJS) $(UTIL_LIB) -o $@
+	@echo "User app has been built into" \"$@\"	
 
 -include $(wildcard $(OBJ_DIR)/*/*.d)
 -include $(wildcard $(OBJ_DIR)/*/*/*.d)
 
 .DEFAULT_GOAL := $(all)
 
-all: $(KERNEL_TARGET) $(USER_TARGET) $(USER_E_TARGET) $(USER_M_TARGET) $(USER_T_TARGET) $(USER_C_TARGET) $(USER_O_TARGET) $(USER_B_TARGET) $(USER_S_TARGET)
+all: $(KERNEL_TARGET) $(USER_TARGET) $(USER_E_TARGET) $(USER_M_TARGET) $(USER_T_TARGET) $(USER_C_TARGET) $(USER_O_TARGET) $(USER_B_TARGET) $(USER_S_TARGET) $(USER_D_TARGET)
 .PHONY:all
 
-run: $(KERNEL_TARGET) $(USER_TARGET) $(USER_E_TARGET) $(USER_M_TARGET) $(USER_T_TARGET) $(USER_C_TARGET) $(USER_O_TARGET) $(USER_B_TARGET) $(USER_S_TARGET)
+run: $(KERNEL_TARGET) $(USER_TARGET) $(USER_E_TARGET) $(USER_M_TARGET) $(USER_T_TARGET) $(USER_C_TARGET) $(USER_O_TARGET) $(USER_B_TARGET) $(USER_S_TARGET) $(USER_D_TARGET)
 	@echo "********************HUST PKE********************"
 	spike $(KERNEL_TARGET) /bin/app_shell
 

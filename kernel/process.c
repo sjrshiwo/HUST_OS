@@ -38,7 +38,7 @@ process* current = NULL;
 void  switch_to(process* proc) {
   assert(proc);
   current = proc;
-
+  //sprint("111\n");
   // write the smode_trap_vector (64-bit func. address) defined in kernel/strap_vector.S
   // to the stvec privilege register, such that trap handler pointed by smode_trap_vector
   // will be triggered when an interrupt occurs in S mode.
@@ -70,7 +70,7 @@ void  switch_to(process* proc) {
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
   //sprint("111\n");
-  //sprint("sepc:%x\n", proc->trapframe->epc);
+  sprint("sepc:%x\n", proc->trapframe->epc);
   //sprint("%x\n",user_satp);
  
   return_to_user(proc->trapframe, user_satp);
@@ -272,7 +272,7 @@ int do_fork( process* parent)
   child->trapframe->regs.a0 = 0;
   child->parent = parent;
   insert_to_ready_queue( child );
-
+  //sprint("111\n");
   return child->pid;
 }
 ssize_t process_wait(int pid)

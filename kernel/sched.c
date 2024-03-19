@@ -124,6 +124,7 @@ void schedule(int type) {
     
   // }
       //sprint("22\n"); 
+      //sprint("111\n");
       current=&t;
       current->status = RUNNING;
       sprint("going to insert process %d to ready queue.\n",current->pid );
@@ -132,11 +133,10 @@ void schedule(int type) {
       
     }
   }
-
   else if ( !ready_queue_head ){
     // by default, if there are no ready process, and all processes are in the status of
     // FREE and ZOMBIE, we should shutdown the emulated RISC-V machine.
-     //sprint("2222\n");
+   
     
     int should_shutdown = 1;
     //sprint("no wait\n");

@@ -239,6 +239,11 @@ ssize_t sys_user_fork() {
   sprint("User call fork.\n");
   return do_fork( current );
 }
+ssize_t sys_user_wait(int pid)
+{
+  //sprint("111\n");
+  return process_wait(pid);
+}
 
 //
 // kerenl entry point of yield. added @lab3_2
@@ -371,10 +376,6 @@ ssize_t sys_user_link(char * vfn1, char * vfn2){
 ssize_t sys_user_unlink(char * vfn){
   char * pfn = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn);
   return do_unlink(pfn);
-}
-ssize_t sys_user_wait(int pid)
-{
-  return process_wait(pid);
 }
 
 ssize_t sys_user_exec(char *s,char *para)
