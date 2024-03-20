@@ -167,7 +167,7 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
                 //sprint("11\n");
                     if (p->line_ind > 0 && p->line[p->line_ind - 1].addr == regs.addr) p->line_ind--;
                     //问题出现在下面这句话 Misaligned Load!
-                    //sprint("%d\n",p->line_ind);
+                    sprint("%d\n",p->line_ind);
                     p->line[p->line_ind] = regs;  
                     //sprint("%d\n",  p->line[p->line_ind].file );
                     p->line[p->line_ind].file += file_base - 1;
@@ -226,6 +226,8 @@ endop:;
 }
 void elf_section_read(elf_ctx *ctx)
 {
+  process *p = ((elf_info *)ctx->info)->p;
+   
     //tx->ehdr.shoff=0x33f8;
     uint64 shr_offset=ctx->ehdr.shoff+ctx->ehdr.shstrndx*sizeof(elf_sect_header); //uint64
     uint64 sect_count=ctx->ehdr.shnum;
@@ -244,15 +246,17 @@ void elf_section_read(elf_ctx *ctx)
         {
           //sprint("shoff:%x l:%x i:%d\n",ctx->ehdr.shoff,ctx->ehdr.shentsize,i);
           //sprint("debugname:%d\n",tp.name);
-          elf_fpread(ctx,(void *)debug,tp.size,tp.offset);
+          
           sprint("%x\n",tp.offset);
-          sprint("%d\n",tp.size);
+          uint64 *pa=user_va_to_pa(p->pagetable,(void *)tp.offset);
+          sprint("%x\n",pa);
+          elf_fpread(ctx,(void *)debug,tp.size,(uint64)pa);
           debug_length=tp.size;
         }
     }
-    process *p = ((elf_info *)ctx->info)->p;
+    //process *p = ((elf_info *)ctx->info)->p;
     //sprint("line:%x\n",p->line_ind);
-    sprint("debuglenth:%d\n",debug_length);
+    //sprint("debuglenth:%d\n",debug_length);
     sprint("debug:%x\n",debug);
     //sprint("111\n");
     //sprint("%x\n",*(uint64 *)debug);
