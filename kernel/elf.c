@@ -169,7 +169,7 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
                     //问题出现在下面这句话 Misaligned Load!
                     sprint("%d\n",p->line_ind);
                     p->line[p->line_ind] = regs;  
-                    //sprint("%d\n",  p->line[p->line_ind].file );
+                    sprint("%d\n",  p->line[p->line_ind].file );
                     p->line[p->line_ind].file += file_base - 1;
                     //sprint("\n");
                     p->line_ind++; break;
@@ -255,13 +255,13 @@ void elf_section_read(elf_ctx *ctx)
     }
     //process *p = ((elf_info *)ctx->info)->p;
     //sprint("line:%x\n",p->line_ind);
-    //sprint("debuglenth:%d\n",debug_length);
+    sprint("debuglenth:%d\n",debug_length);
     //sprint("debug:%x\n",debug);
     
     //sprint("111\n");
     //sprint("%x\n",*(uint64 *)debug);
     make_addr_line(ctx,debug,debug_length);
-    //sprint("111\n");
+    sprint("111\n");
     // process *p = ((elf_info *)ctx->info)->p;
     // for(i=0;i<=2;i++)
     //  sprint("addr:%x line:%x file:%x\n",p->line[i].addr,p->line[i].line,p->line[i].file);
