@@ -25,6 +25,16 @@ uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, u
 
   return ret;
 }
+void* better_malloc(int n) {
+  return (void*)do_user_call(SYS_user_allocate, n, 0, 0, 0, 0, 0, 0);
+}
+
+//
+// lib call to better_free
+//
+void better_free(void* va) {
+  do_user_call(SYS_user_free, (uint64)va, 0, 0, 0, 0, 0, 0);
+}
 
 int print_backtrace(int n)
 {
