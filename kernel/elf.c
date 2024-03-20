@@ -245,19 +245,19 @@ void elf_section_read(elf_ctx *ctx)
         if(strcmp(shr_sy+tp.name,".debug_line")==0)
         {
           //sprint("shoff:%x l:%x i:%d\n",ctx->ehdr.shoff,ctx->ehdr.shentsize,i);
-          //sprint("debugname:%d\n",tp.name);
+          sprint("debugname:%d\n",tp.name);
           
           sprint("%x\n",tp.offset);
-          uint64 *pa=user_va_to_pa(p->pagetable,(void *)tp.offset);
-          sprint("%x\n",pa);
-          elf_fpread(ctx,(void *)debug,tp.size,(uint64)pa);
+        
+          elf_fpread(ctx,(void *)debug,tp.size,tp.offset);
           debug_length=tp.size;
         }
     }
     //process *p = ((elf_info *)ctx->info)->p;
     //sprint("line:%x\n",p->line_ind);
     //sprint("debuglenth:%d\n",debug_length);
-    sprint("debug:%x\n",debug);
+    //sprint("debug:%x\n",debug);
+    
     //sprint("111\n");
     //sprint("%x\n",*(uint64 *)debug);
     make_addr_line(ctx,debug,debug_length);
