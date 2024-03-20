@@ -100,8 +100,8 @@ typedef struct process_t {
 
   // file system. added @lab4_1
   proc_file_management *pfiles;
-   char *debugline; char **dir; code_file *file; addr_line *line; 
-   int line_ind;
+  char *debugline; char **dir; code_file *file; addr_line *line; 
+  int line_ind;
 }process;
 
 // switch to run user app
