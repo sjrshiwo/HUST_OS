@@ -9,5 +9,5 @@
 void insert_to_ready_queue( process* proc );
 void schedule(int type);
 void insert_to_wait_queue(process* proc);
-
+void wake_wait_queue(int a1);
 #endif

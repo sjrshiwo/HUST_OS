@@ -50,7 +50,7 @@ int sys_user_sem_new(int a1)
 {
   len++;
   l[len]=a1;
-  sprint("%d %d\n",len,l[len]);
+  //sprint("%d %d\n",len,l[len]);
   return len;
 }
 int sys_user_sem_P(int a1)
