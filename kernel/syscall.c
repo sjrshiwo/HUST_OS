@@ -835,15 +835,11 @@ ssize_t sys_user_unlink(char * vfn){
 
 ssize_t sys_user_exec(char *s,char *para)
 {
-  //sprint("o\n");
-  char *path=s;
-
-  //sprint();
+  //sprint("o\n");  //sprint();
   //sprint("%s\n",apathpa);
   /// /bin/app_mkdir
   // int fd=do_open(pathpa,O_RDWR | O_CREAT);
   //process *st=alloc_page();
-  // current
   syscall_load_bincode_from_host_elf(current,s,para);
   // //sprint("fd:%d\n",fd);
   // //sprint("0\n");
