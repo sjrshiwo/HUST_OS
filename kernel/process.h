@@ -97,7 +97,7 @@ typedef struct process_t {
 
   // accounting. added @lab3_3
   int tick_count;
-
+  int sem;
   // file system. added @lab4_1
   proc_file_management *pfiles;
   char *debugline; char **dir; code_file *file; addr_line *line; 

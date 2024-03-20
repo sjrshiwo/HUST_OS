@@ -41,5 +41,9 @@ void* better_malloc(int n);
 //lab4-challenge1
 int read_cwd(char *path);
 int change_cwd(const char *path);
+//lab3-challenge2
+int sem_V(int a1);
+int sem_new(int i);
+int sem_P(int a1);
 
 #endif

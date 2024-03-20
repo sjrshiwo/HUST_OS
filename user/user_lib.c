@@ -25,6 +25,21 @@ uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, u
 
   return ret;
 }
+
+int  sem_new(int i)
+{
+  return do_user_call(SYS_user_sem_new, i, 0, 0, 0, 0, 0, 0);
+}
+int sem_P(int a1)
+{
+  return do_user_call(SYS_user_sem_P, a1, 0, 0, 0, 0, 0, 0);
+}
+int sem_V(int a1)
+{
+  return do_user_call(SYS_user_sem_V, a1, 0, 0, 0, 0, 0, 0);
+}
+
+
 void* better_malloc(int n) {
   return (void*)do_user_call(SYS_user_allocate, n, 0, 0, 0, 0, 0, 0);
 }

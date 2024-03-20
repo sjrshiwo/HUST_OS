@@ -41,6 +41,50 @@ int p_m=0;//页数
 int leave;
 page p[100];
 uint64 g_malloc_page=0;
+
+int l[100];//存信号量
+int len=0;//信号量到多少
+
+//lab3_challenge2
+int sys_user_sem_new(int a1)
+{
+  len++;
+  l[len]=a1;
+  sprint("%d %d\n",len,l[len]);
+  return len;
+}
+int sys_user_sem_P(int a1)
+{
+  //sprint("l[1]:%d\n",l[1]);
+  //sprint("l[2]:%d\n",l[2]);
+  //sprint("l[3]:%d\n",l[3]);
+
+  if(l[a1]-1>=0)
+  {
+    l[a1]-=1;
+    //sprint("111\n");
+  }
+  else
+  {
+    l[a1]-=1;
+    //sprint("charu\n");
+    current->sem=a1;
+    //current->status=BLOCKED;
+    insert_to_wait_queue(current);
+    schedule(0);
+  }
+  return 1;
+}
+//insert_to_ready_queue
+int sys_user_sem_V(int a1)
+{
+  l[a1]+=1;
+  wake_wait_queue(a1);
+  //if(l[a1]>0) l[a1]=l[a1]-1;
+  return 1;
+}
+
+//lab2_challenge2
 uint64  block_alloc(page *pi,int a1)
 {
   int i=0,j=1;
@@ -108,6 +152,7 @@ uint64  block_alloc(page *pi,int a1)
   }
   return 0;
 }
+
 uint64  block_alloc_va(page *pi,int a1)
 {
   int i=0,j=1;
