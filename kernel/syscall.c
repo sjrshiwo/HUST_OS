@@ -22,7 +22,7 @@ extern symbol sh[64];
 extern elf_sect_header ini;
 extern uint64 cot;
 extern uint64 id[64];
-
+extern uint64 g_ufree_page;
 typedef struct block_m{
   int flag;//0为空闲
   uint64 start;
