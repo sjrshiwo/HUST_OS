@@ -4,7 +4,7 @@
 int main(int argc, char *argv[]) {
   printu("\n======== exec /bin/app_ls in app_exec ========\n");
   printu("call exec in main\n");
-  int ret = exec("/bin/app_ls");
+  int ret = exec("/bin/app_ls","");
   if (ret == -1)
     printu("exec failed!\n");
 
