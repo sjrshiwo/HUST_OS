@@ -145,7 +145,7 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
             uint8 op = *(off++);
             switch (op) {
                 case 0: // Extended Opcodes
-                sprint("0\n");
+                //sprint("0\n");
                     read_uleb128(NULL, &off); op = *(off++);
                     switch (op) {
                         case 1: // DW_LNE_end_sequence
@@ -164,14 +164,14 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
                     }
                     break;
                 case 1: // DW_LNS_copy
-                sprint("11\n");
+                //sprint("11\n");
                     if (p->line_ind > 0 && p->line[p->line_ind - 1].addr == regs.addr) p->line_ind--;
                     //问题出现在下面这句话 Misaligned Load!
-                    sprint("%d\n",p->line_ind);
+                    //sprint("%d\n",p->line_ind);
                     p->line[p->line_ind] = regs;  
-                    sprint("%d\n",  p->line[p->line_ind].file );
+                    //sprint("%d\n",  p->line[p->line_ind].file );
                     p->line[p->line_ind].file += file_base - 1;
-                    sprint("\n");
+                    //sprint("\n");
                     p->line_ind++; break;
                 
                 case 2: { // DW_LNS_advance_pc
@@ -245,7 +245,8 @@ void elf_section_read(elf_ctx *ctx)
           //sprint("shoff:%x l:%x i:%d\n",ctx->ehdr.shoff,ctx->ehdr.shentsize,i);
           //sprint("debugname:%d\n",tp.name);
           elf_fpread(ctx,(void *)debug,tp.size,tp.offset);
-          //sprint("%x\n",tp.offset);
+          sprint("%x\n",tp.offset);
+          sprint("%d\n",tp.size);
           debug_length=tp.size;
         }
     }
@@ -255,8 +256,8 @@ void elf_section_read(elf_ctx *ctx)
     sprint("debug:%x\n",debug);
     //sprint("111\n");
     //sprint("%x\n",*(uint64 *)debug);
-    make_addr_line(ctx,debug, debug_length);
-    
+    make_addr_line(ctx,debug,debug_length);
+    //sprint("111\n");
     // process *p = ((elf_info *)ctx->info)->p;
     // for(i=0;i<=2;i++)
     //  sprint("addr:%x line:%x file:%x\n",p->line[i].addr,p->line[i].line,p->line[i].file);
@@ -437,8 +438,8 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   }
   
   //sprint("\np->pagetable:%x\n",p->pagetable);
-  
-  elf_section_read(&elfloader);
+  if(strcmp(filename,"/bin/app_errorline_challengex")==0)
+    elf_section_read(&elfloader);
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
