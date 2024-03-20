@@ -149,64 +149,64 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
                     read_uleb128(NULL, &off); op = *(off++);
                     switch (op) {
                         case 1: // DW_LNE_end_sequence
-                        sprint("11\n");
+                        //sprint("11\n");
                             if (p->line_ind > 0 && p->line[p->line_ind - 1].addr == regs.addr) p->line_ind--;
                             //sprint("22\n");
                             p->line[p->line_ind] = regs; p->line[p->line_ind].file += file_base - 1;
                             p->line_ind++; goto endop;
                         case 2: // DW_LNE_set_address
-                        sprint("22\n");
+                        //sprint("22\n");
                             read_uint64(&regs.addr, &off); break;
                         // ignore DW_LNE_define_file
                         case 4: // DW_LNE_set_discriminator
-                            sprint("44\n");
+                            //sprint("44\n");
                             read_uleb128(NULL, &off); break;
                     }
                     break;
                 case 1: // DW_LNS_copy
-                sprint("1\n");
+                sprint("11\n");
                     if (p->line_ind > 0 && p->line[p->line_ind - 1].addr == regs.addr) p->line_ind--;
                     //问题出现在下面这句话 Misaligned Load!
                     sprint("%d\n",p->line_ind);
                     p->line[p->line_ind] = regs;  
                     sprint("%d\n",  p->line[p->line_ind].file );
                     p->line[p->line_ind].file += file_base - 1;
-                    sprint("!\n");
+                    sprint("\n");
                     p->line_ind++; break;
                 
                 case 2: { // DW_LNS_advance_pc
-                sprint("2\n");
+                //sprint("2\n");
                             uint64 delta; read_uleb128(&delta, &off);
                             regs.addr += delta * dh->min_instruction_length;
                             break;
                         }
                 case 3: { // DW_LNS_advance_line
-                 sprint("3\n");
+                 //sprint("3\n");
                             int64 delta; read_sleb128(&delta, &off);
                             regs.line += delta; break; } case 4: // DW_LNS_set_file
                         read_uleb128(&regs.file, &off); break;
                 case 5: // DW_LNS_set_column
-                 sprint("5\n");
+                 //sprint("5\n");
                         read_uleb128(NULL, &off); break;
                 case 6: // DW_LNS_negate_stmt
                 case 7: // DW_LNS_set_basic_block
                         break;
                 case 8: { // DW_LNS_const_add_pc
-                 sprint("8\n");
+                 //sprint("8\n");
                 
                             int adjust = 255 - dh->opcode_base;
                             int delta = (adjust / dh->line_range) * dh->min_instruction_length;
                             regs.addr += delta; break;
                         }
                 case 9: { // DW_LNS_fixed_advanced_pc
-                sprint("9\n");
+                //sprint("9\n");
                             uint16 delta; read_uint16(&delta, &off);
                             regs.addr += delta;
                             break;
                         }
                         // ignore 10, 11 and 12
                 default: { // Special Opcodes
-                sprint("default\n");
+                //sprint("default\n");
                              int adjust = op - dh->opcode_base;
                              int addr_delta = (adjust / dh->line_range) * dh->min_instruction_length;
                              int line_delta = dh->line_base + (adjust % dh->line_range);
