@@ -896,6 +896,14 @@ ssize_t sys_user_rcwd(char *path){
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
+ssize_t sys_user_printpa(uint64 va)
+{
+  //一个虚拟地址的8 9位为rsw未被使用可用来标记是不是写时复制场景
+  uint64 tp=read_tp();
+  uint64 pa = (uint64)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)va);
+  sprint("%lx\n", pa);
+  return 0;
+}
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
   //("111\n");
   switch (a0) {
@@ -962,6 +970,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_sem_P(a1);
     case SYS_user_sem_V:
       return sys_user_sem_V(a1);
+    case SYS_user_printpa:
+      return sys_user_printpa(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

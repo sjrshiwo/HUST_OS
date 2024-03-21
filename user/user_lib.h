@@ -45,5 +45,5 @@ int change_cwd(const char *path);
 int sem_V(int a1);
 int sem_new(int i);
 int sem_P(int a1);
-
+void printpa(int* va);
 #endif

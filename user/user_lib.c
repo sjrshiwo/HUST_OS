@@ -25,7 +25,10 @@ uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, u
 
   return ret;
 }
-
+void printpa(int* va)
+{
+  do_user_call(SYS_user_printpa, (uint64)va, 0, 0, 0, 0, 0, 0);
+}
 int  sem_new(int i)
 {
   return do_user_call(SYS_user_sem_new, i, 0, 0, 0, 0, 0, 0);
