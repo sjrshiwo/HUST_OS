@@ -54,8 +54,9 @@ void handle_mtimer_trap() {
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
   uint64 tp=read_tp();
   sprint("handle_page_fault: %lx\n", stval);
-    if(stval<current[tp]->trapframe->regs.sp)
+    if(stval<current[tp]->trapframe->regs.sp&&mcause!=CAUSE_STORE_PAGE_FAULT)
     {
+      sprint("sp:%x\n",current[tp]->trapframe->regs.sp);
      //超出用户栈
     // if(stval<(uint64)0x7ffff000) 
       // sprint("%lx\n",stval);
