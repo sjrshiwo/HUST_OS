@@ -31,6 +31,7 @@ enum proc_status {
   RUNNING,         // currently running
   BLOCKED,         // waiting for something
   ZOMBIE,          // terminated but not reclaimed yet
+  USED,
 };
 
 // types of a segment
@@ -117,6 +118,6 @@ int free_process( process* proc );
 int do_fork(process* parent);
 ssize_t process_wait(int pid);
 // current running process
-extern process* current;
+extern process* current[2];
 
 #endif

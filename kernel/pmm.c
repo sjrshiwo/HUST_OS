@@ -5,7 +5,9 @@
 #include "util/string.h"
 #include "memlayout.h"
 #include "spike_interface/spike_utils.h"
-
+#include "sync_utils.h"
+volatile int count_5=1;
+extern uint64 g_mem_size;
 // _end is defined in kernel/kernel.lds, it marks the ending (virtual) address of PKE kernel
 extern char _end[];
 // g_mem_size is defined in spike_interface/spike_memory.c, it indicates the size of our
@@ -14,7 +16,7 @@ extern uint64 g_mem_size;
 
 static uint64 free_mem_start_addr;  //beginning address of free memory
 static uint64 free_mem_end_addr;    //end address of free memory (not included)
-
+int vm_alloc_stage[NCPU] = { 0,0}; 
 typedef struct node {
   struct node *next;
 } list_node;
@@ -50,9 +52,15 @@ void free_page(void *pa) {
 // Allocates only ONE page!
 //
 void *alloc_page(void) {
+  sem_P(&count_5);
   list_node *n = g_free_mem_list.next;
+  uint64 hartid = 0;
+  uint64 tp=read_tp();
+  if (vm_alloc_stage[tp]) {
+    sprint("hartid = %ld: alloc page 0x%x\n", tp, n);
+  }
   if (n) g_free_mem_list.next = n->next;
-
+  sem_V(&count_5);
   return (void *)n;
 }
 

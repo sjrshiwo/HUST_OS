@@ -44,6 +44,7 @@ void insert_to_ready_queue( process* proc ) {
 //
 extern process procs[NPROC];
 void schedule(int type) {
+  uint64 cpu=read_tp();
   if(wait_queue_head!=NULL&&type==1)//等待队列非空
   {
     
@@ -55,12 +56,12 @@ void schedule(int type) {
     process *pro=NULL;
     //sprint("%d\n",current->parent->pid);//子进程号是2
     //sprint("%d\n",t.pid);//第一个父进程号是1
-    if(current->parent!=NULL)
+    if(current[cpu]->parent!=NULL)
     {
       while(1)
       {
         //sprint("111\n");
-        if(t.pid==current->parent->pid)
+        if(t.pid==current[cpu]->parent->pid)
        {
         //sprint("%d\n",t.pid);
         flag=1;
@@ -126,11 +127,11 @@ void schedule(int type) {
   // }
       //sprint("22\n"); 
       //sprint("111\n");
-      current=&t;
-      current->status = RUNNING;
-      sprint("going to insert process %d to ready queue.\n",current->pid );
-      sprint( "going to schedule process %d to run.\n", current->pid );
-      switch_to( current );
+      current[cpu]=&t;
+      current[cpu]->status = RUNNING;
+      sprint("going to insert process %d%d to ready queue.\n",current[cpu]->pid );
+      sprint( "going to schedule process %d%d to run.\n", current[cpu]->pid );
+      switch_to( current[cpu] );
       
     }
   }
@@ -158,14 +159,14 @@ void schedule(int type) {
     }
   }
 
-  current = ready_queue_head;
-  assert( current->status == READY );
+  current[cpu] = ready_queue_head;
+  assert( current[cpu]->status == READY );
   ready_queue_head = ready_queue_head->queue_next;
 
-  current->status = RUNNING;
-  sprint( "going to schedule process %d to run.\n", current->pid );
+  current[cpu]->status = RUNNING;
+  sprint( "going to schedule process %d to run.\n", current[cpu]->pid );
   //sprint("111\n");
-  switch_to( current );
+  switch_to( current[cpu] );
 }
 
 void insert_to_wait_queue(process *proc)//等待队列

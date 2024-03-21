@@ -17,7 +17,8 @@
 #include "memlayout.h"
 #include "sched.h"
 #include "spike_interface/spike_utils.h"
-
+#include "sync_utils.h"
+volatile int count_3=1;
 //Two functions defined in kernel/usertrap.S
 extern char smode_trap_vector[];
 extern void return_to_user(trapframe *, uint64 satp);
@@ -30,14 +31,15 @@ extern char trap_sec_start[];
 process procs[NPROC];
 
 // current points to the currently running user-mode application.
-process* current = NULL;
+process* current [2];
 uint64 g_ufree_page = USER_FREE_ADDRESS_START;
 //
 // switch to a user-mode process
 //
 void  switch_to(process* proc) {
   assert(proc);
-  current = proc;
+  uint64 tp=read_tp();
+  current[tp] = proc;
   //sprint("111\n");
   // write the smode_trap_vector (64-bit func. address) defined in kernel/strap_vector.S
   // to the stvec privilege register, such that trap handler pointed by smode_trap_vector
@@ -83,7 +85,7 @@ void  switch_to(process* proc) {
 //
 void init_proc_pool() {
   memset( procs, 0, sizeof(process)*NPROC );
-
+  uint64 tp=read_tp();
   for (int i = 0; i < NPROC; ++i) {
     procs[i].status = FREE;
     procs[i].pid = i;
@@ -96,8 +98,10 @@ void init_proc_pool() {
 //
 process* alloc_process() {
   // locate the first usable process structure
+  uint64 tp=read_tp();
+  //sprint("%d\n",tp);
   int i;
-
+  sem_P(&count_3);
   for( i=0; i<NPROC; i++ )
     if( procs[i].status == FREE ) break;
 
@@ -145,8 +149,8 @@ process* alloc_process() {
   procs[i].mapped_info[SYSTEM_SEGMENT].npages = 1;
   procs[i].mapped_info[SYSTEM_SEGMENT].seg_type = SYSTEM_SEGMENT;
 
-  sprint("in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",
-    procs[i].trapframe, procs[i].trapframe->regs.sp, procs[i].kstack);
+  // sprint("in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",
+  //   procs[i].trapframe, procs[i].trapframe->regs.sp, procs[i].kstack);
 
   // initialize the process's heap manager
   procs[i].user_heap.heap_top = USER_FREE_ADDRESS_START;
@@ -162,10 +166,12 @@ process* alloc_process() {
 
   // initialize files_struct
   procs[i].pfiles = init_proc_file_management();
-  sprint("in alloc_proc. build proc_file_management successfully.\n");
+  //sprint("in alloc_proc. build proc_file_management successfully.\n");
   //sprint(" procs[i].kstack:%x\n",procs[i].kstack);
   // return after initialization.
   //sprint("alloc pagetable:%x\n",procs[i].pagetable);
+   procs[i].status = USED;
+  sem_V(&count_3);
   return &procs[i];
 }
 
@@ -177,6 +183,7 @@ int free_process( process* proc ) {
   // since proc can be current process, and its user kernel stack is currently in use!
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
+  uint64 tp=read_tp();
   for( int i=0; i<NPROC; i++ )
     if( procs[i].pid==proc->pid)
     {
@@ -197,6 +204,7 @@ int free_process( process* proc ) {
 //
 int do_fork( process* parent)
 {
+  uint64 tp=read_tp();
   sprint( "will fork a child from parent %d.\n", parent->pid );
   process* child = alloc_process();
 
@@ -226,8 +234,8 @@ int do_fork( process* parent)
         }
 
         // copy and map the heap blocks
-        for (uint64 heap_block = current->user_heap.heap_bottom;
-             heap_block < current->user_heap.heap_top; heap_block += PGSIZE) {
+        for (uint64 heap_block = current[tp]->user_heap.heap_bottom;
+             heap_block < current[tp]->user_heap.heap_top; heap_block += PGSIZE) {
           if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
             continue;
 
@@ -297,6 +305,7 @@ int do_fork( process* parent)
 }
 ssize_t process_wait(int pid)
 {
+  uint64 tp=read_tp();
   int i=0,j=0,flag=0;//
   if(pid==-1)
   {
@@ -309,7 +318,7 @@ ssize_t process_wait(int pid)
         //procs[i].parent->pid未经过赋值
         
         //sprint("%d\n",procs[i].parent->pid);
-        if(procs[i].parent==current)//找到子进程
+        if(procs[i].parent==current[tp])//找到子进程
        { 
            //sprint("101\n");
             flag=1;
@@ -329,7 +338,7 @@ ssize_t process_wait(int pid)
     if(flag==1)
     {
      
-      insert_to_wait_queue(current);
+      insert_to_wait_queue(current[tp]);
        
       schedule(0);
       //sprint("101\n");
@@ -344,7 +353,7 @@ ssize_t process_wait(int pid)
       {
 
       
-      if(procs[i].parent->pid==current->pid)//找到子进程
+      if(procs[i].parent->pid==current[tp]->pid)//找到子进程
       {
         if(procs[i].pid==pid)
         { 
@@ -362,7 +371,7 @@ ssize_t process_wait(int pid)
     }
     if(flag==1)
     {
-      insert_to_wait_queue(current);//两个都在it里因此会出现碰到process0以为当前调度已经完成的情况
+      insert_to_wait_queue(current[tp]);//两个都在it里因此会出现碰到process0以为当前调度已经完成的情况
       schedule(0);
       return pid;
     }

@@ -28,11 +28,12 @@ static void handle_timer() {
 // handle_mtrap calls a handling function according to the type of a machine mode interrupt (trap).
 //
 void handle_mtrap() {
+  uint64 tp=read_tp();
   uint64 mcause = read_csr(mcause);
   if(mcause==CAUSE_ILLEGAL_INSTRUCTION)
   {
     
-    addr_line *line = current->line;
+    addr_line *line = current[tp]->line;
     uint64 cause_addr=read_csr(mepc);
   int i=0,dir1=0,line1=0,len=0;
   char s1[1000],s2[1000],buf,s3[1000],s[1000]="\0";
@@ -53,11 +54,11 @@ void handle_mtrap() {
   //sprint("long:%d\n",current->line_ind);
   //sprint("%d %d\n",i,line);
   //sprint("%d\n",current->line[i].file);
-  dir1=current->file[line[i].file].dir;
-  strcpy(s1,current->file[line[i].file].file);//当前的路径
+  dir1=current[tp]->file[line[i].file].dir;
+  strcpy(s1,current[tp]->file[line[i].file].file);//当前的路径
   //sprint("%d\n",dir1);
   //strcpy(s2,*(current->dir)+dir1);错误
-  strcpy(s2,current->dir[dir1]);
+  strcpy(s2,current[tp]->dir[dir1]);
   //sprint("s2:%s\n",s2);
   sprint("Runtime error at %s/%s:%d\n",s2,s1,line1);
   strcpy(s,s2);

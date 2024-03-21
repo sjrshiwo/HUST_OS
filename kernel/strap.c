@@ -52,8 +52,9 @@ void handle_mtimer_trap() {
 // stval: the virtual address that causes pagefault when being accessed.
 //
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
+  uint64 tp=read_tp();
   sprint("handle_page_fault: %lx\n", stval);
-    if(stval<current->trapframe->regs.sp)
+    if(stval<current[tp]->trapframe->regs.sp)
     {
      //超出用户栈
     // if(stval<(uint64)0x7ffff000) 
@@ -70,7 +71,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
     //panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
     void* pa = alloc_page();
     //page_walk(current->pagetable, (uint64)stval,1);
-    map_pages(current->pagetable, (uint64)stval,(uint64) 1, (uint64)pa,
+    map_pages(current[tp]->pagetable, (uint64)stval,(uint64) 1, (uint64)pa,
           prot_to_type(PROT_WRITE | PROT_READ, 1));
           //user_vm_map
     //stval+=PGSIZE;
@@ -91,15 +92,15 @@ void rrsched() {
   // TIME_SLICE_LEN (means it has consumed its time slice), change its status into READY,
   // place it in the rear of ready queue, and finally schedule next process to run.
   // panic( "You need to further implement the timer handling in lab3_3.\n" );
-  
-  if(current->tick_count+1>=2)
+  uint64 tp=read_tp();
+  if(current[tp]->tick_count+1>=2)
   {
-    current->tick_count=0;
-    insert_to_ready_queue(current);
+    current[tp]->tick_count=0;
+    insert_to_ready_queue(current[tp]);
     schedule(0);
   }
   else 
-  current->tick_count+=1;  ;
+  current[tp]->tick_count+=1;  ;
  
 }
 
@@ -111,10 +112,10 @@ void smode_trap_handler(void) {
   // make sure we are in User mode before entering the trap handling.
   // we will consider other previous case in lab1_3 (interrupt).
   if ((read_csr(sstatus) & SSTATUS_SPP) != 0) panic("usertrap: not from user mode");
-
-  assert(current);
+  uint64 tp=read_tp();
+  assert(current[tp]);
   // save user process counter.
-  current->trapframe->epc = read_csr(sepc);
+  current[tp]->trapframe->epc = read_csr(sepc);
 
   // if the cause of trap is syscall from user application.
   // read_csr() and CAUSE_USER_ECALL are macros defined in kernel/riscv.h
@@ -123,7 +124,7 @@ void smode_trap_handler(void) {
   // use switch-case instead of if-else, as there are many cases since lab2_3.
   switch (cause) {
     case CAUSE_USER_ECALL:
-      handle_syscall(current->trapframe);
+      handle_syscall(current[tp]->trapframe);
       break;
     case CAUSE_MTIMER_S_TRAP:
       handle_mtimer_trap();
@@ -144,5 +145,5 @@ void smode_trap_handler(void) {
   }
 
   // continue (come back to) the execution of current process.
-  switch_to(current);
+  switch_to(current[tp]);
 }

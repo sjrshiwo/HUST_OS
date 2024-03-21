@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include <errno.h>
-
+#include "sync_utils.h"
 #include "util/types.h"
 #include "syscall.h"
 #include "string.h"
@@ -16,8 +16,8 @@
 #include "proc_file.h"
 #include "elf.h"
 #include "spike_interface/spike_utils.h"
-
-
+volatile int count_4=0;
+volatile int count_7=0;
 extern symbol sh[64];
 extern elf_sect_header ini;
 extern uint64 cot;
@@ -44,7 +44,11 @@ uint64 g_malloc_page=0;
 
 int l[100];//存信号量
 int len=0;//信号量到多少
-
+uint64 readtp()
+{
+  uint64 tp=read_tp();
+  return tp;
+}
 //lab3_challenge2
 int sys_user_sem_new(int a1)
 {
@@ -68,9 +72,9 @@ int sys_user_sem_P(int a1)
   {
     l[a1]-=1;
     //sprint("charu\n");
-    current->sem=a1;
+    current[readtp()]->sem=a1;
     //current->status=BLOCKED;
-    insert_to_wait_queue(current);
+    insert_to_wait_queue(current[readtp()]);
     schedule(0);
   }
   return 1;
@@ -364,7 +368,7 @@ uint64 sys_user_better_allocate_page(uint64 a1) {
    for(j=1;j<=i;j++)
   {
     
-    user_vm_map((pagetable_t)current->pagetable, g_malloc_page, PGSIZE, (uint64)pa,
+    user_vm_map((pagetable_t)current[(readtp())]->pagetable, g_malloc_page, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
     g_malloc_page+=PGSIZE;     
     pa=alloc_page();
@@ -406,7 +410,7 @@ uint64 sys_user_better_allocate_page(uint64 a1) {
     //sprint("va2:%x\n",va);
     //sprint("111\n");
 
-    user_vm_map((pagetable_t)current->pagetable, g_malloc_page, PGSIZE, (uint64)pa,
+    user_vm_map((pagetable_t)current[readtp()]->pagetable, g_malloc_page, PGSIZE, (uint64)pa,
     prot_to_type(PROT_WRITE | PROT_READ, 1));
     g_malloc_page+=PGSIZE; 
     // user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
@@ -465,7 +469,7 @@ ssize_t sys_user_lab1_challenge1(uint64 a1)
   
   uint64 n=1;
   uint64 i=0; 
-  assert(current);
+  assert(current[readtp()]);
   //uint64 addr1=current->trapframe->kernel_sp;
   //USER_STACK
   //sp是高地址
@@ -478,7 +482,7 @@ ssize_t sys_user_lab1_challenge1(uint64 a1)
  //sprint("%x\n",current->trapframe->regs.sp);
 
  //10082对应的是print_trace的ra ra-8里面存的是fp
- uint64 va=current->trapframe->regs.sp;
+ uint64 va=current[readtp()]->trapframe->regs.sp;
   uint64 ar1=0;
 //sprint("%x\n",(va));
 // for(i=0;i<=20;i++)
@@ -487,7 +491,7 @@ ssize_t sys_user_lab1_challenge1(uint64 a1)
 //   sprint("%d %x\n",i,(ar1));
 // }
 va=va+24;
-  ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)current->trapframe->regs.sp+3*8);
+  ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void *)current[readtp()]->trapframe->regs.sp+3*8);
 
 
 //  for(i=0;i<=11;i++)
@@ -508,7 +512,7 @@ va=va+24;
       }
      }
      va=va+16;
-     ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current->pagetable),(void *) va);
+     ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable),(void *) va);
      //ar1= *(uint64 *)(ar1-16);
       n+=1;
   }
@@ -613,8 +617,8 @@ void syscall_load_bincode_from_host_elf(process *p,char *s,char *para) {
 ssize_t sys_user_print(const char* buf, size_t n) {
   // buf is now an address in user space of the given app's user stack,
   // so we have to transfer it into phisical address (kernel is running in direct mapping).
-  assert( current );
-  char* pa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)buf);
+  assert( current[readtp()] );
+  char* pa = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void*)buf);
   sprint(pa);
   return 0;
 }
@@ -625,12 +629,30 @@ ssize_t sys_user_print(const char* buf, size_t n) {
 // implement the SYS_user_exit syscall
 //
 ssize_t sys_user_exit(uint64 code) {
-  sprint("User exit with code:%d.\n", code);
-  // reclaim the current process, and reschedule. added @lab3_1
-  free_process( current );
-  // if(current->pid==0)
-  //   sprint("yes_free\n");
-  schedule(1);
+  // sprint("User exit with code:%d.\n", code);
+  // // reclaim the current process, and reschedule. added @lab3_1
+  // free_process( current[readtp()] );
+  // // if(current->pid==0)
+  // //   sprint("yes_free\n");
+  // schedule(1);
+  // return 0; 
+  uint64 tp=read_tp();
+  sprint("hartid = %d: User exit with code: %d.\n",tp, code);
+  sync_barrier(&count_4,NCPU);
+ 
+  if (tp == 0)
+  {
+    free_process(current[tp]);
+    schedule(1);
+  }
+  else
+  {
+    //sprint("111\n");
+    free_process(current[tp]);
+    //schedule(1);
+  }
+  sync_barrier(&count_7,NCPU);
+  //shutdown(code);
   return 0;
 }
 
@@ -642,17 +664,17 @@ uint64 sys_user_allocate_page() {
   uint64 va;
   // if there are previously reclaimed pages, use them first (this does not change the
   // size of the heap)
-  if (current->user_heap.free_pages_count > 0) {
-    va =  current->user_heap.free_pages_address[--current->user_heap.free_pages_count];
-    assert(va < current->user_heap.heap_top);
+  if (current[readtp()]->user_heap.free_pages_count > 0) {
+    va =  current[readtp()]->user_heap.free_pages_address[--current[readtp()]->user_heap.free_pages_count];
+    assert(va < current[readtp()]->user_heap.heap_top);
   } else {
     // otherwise, allocate a new page (this increases the size of the heap by one page)
-    va = current->user_heap.heap_top;
-    current->user_heap.heap_top += PGSIZE;
+    va = current[readtp()]->user_heap.heap_top;
+    current[readtp()]->user_heap.heap_top += PGSIZE;
 
-    current->mapped_info[HEAP_SEGMENT].npages++;
+    current[readtp()]->mapped_info[HEAP_SEGMENT].npages++;
   }
-  user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
+  user_vm_map((pagetable_t)current[readtp()]->pagetable, va, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
 
   return va;
@@ -662,9 +684,9 @@ uint64 sys_user_allocate_page() {
 // reclaim a page, indicated by "va". added @lab2_2
 //
 uint64 sys_user_free_page(uint64 va) {
-  user_vm_unmap((pagetable_t)current->pagetable, va, PGSIZE, 1);
+  user_vm_unmap((pagetable_t)current[readtp()]->pagetable, va, PGSIZE, 1);
   // add the reclaimed page to the free page list
-  current->user_heap.free_pages_address[current->user_heap.free_pages_count++] = va;
+  current[readtp()]->user_heap.free_pages_address[current[readtp()]->user_heap.free_pages_count++] = va;
   return 0;
 }
 
@@ -673,7 +695,7 @@ uint64 sys_user_free_page(uint64 va) {
 //
 ssize_t sys_user_fork() {
   sprint("User call fork.\n");
-  return do_fork( current );
+  return do_fork( current[readtp()] );
 }
 ssize_t sys_user_wait(int pid)
 {
@@ -689,7 +711,7 @@ ssize_t sys_user_yield() {
   // hint: the functionality of yield is to give up the processor. therefore,
   // we should set the status of currently running process to READY, insert it in
   // the rear of ready queue, and finally, schedule a READY process to run.
-  insert_to_ready_queue(current);
+  insert_to_ready_queue(current[readtp()]);
   schedule(0);
   // panic( "You need to implement the yield syscall in lab3_2.\n" );
 
@@ -700,15 +722,15 @@ ssize_t sys_user_yield() {
 // open file
 //
 ssize_t sys_user_open(char *pathva, int flags) {
-  char* pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+  char* pathpa = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), pathva);
   char pathb[30];
   if(*pathpa=='.'&&*(pathpa+1)=='.')
   {
-    strcpy(pathb,current->pfiles->cwd->name);
+    strcpy(pathb,current[readtp()]->pfiles->cwd->name);
   }
   else if(*pathpa=='.'&&*(pathpa+1)!='.')
   {
-    strcpy(pathb,current->pfiles->cwd->name);
+    strcpy(pathb,current[readtp()]->pfiles->cwd->name);
     if(strcmp(pathb,"/")==0)//上级目录是根目录相对路径等于当前路径
     {
       strcpy(pathb,pathpa+1);
@@ -730,7 +752,7 @@ ssize_t sys_user_read(int fd, char *bufva, uint64 count) {
   int i = 0;
   while (i < count) { // count can be greater than page size
     uint64 addr = (uint64)bufva + i;
-    uint64 pa = lookup_pa((pagetable_t)current->pagetable, addr);
+    uint64 pa = lookup_pa((pagetable_t)current[readtp()]->pagetable, addr);
     uint64 off = addr - ROUNDDOWN(addr, PGSIZE);
     uint64 len = count - i < PGSIZE - off ? count - i : PGSIZE - off;
     uint64 r = do_read(fd, (char *)pa + off, len);
@@ -746,7 +768,7 @@ ssize_t sys_user_write(int fd, char *bufva, uint64 count) {
   int i = 0;
   while (i < count) { // count can be greater than page size
     uint64 addr = (uint64)bufva + i;
-    uint64 pa = lookup_pa((pagetable_t)current->pagetable, addr);
+    uint64 pa = lookup_pa((pagetable_t)current[readtp()]->pagetable, addr);
     uint64 off = addr - ROUNDDOWN(addr, PGSIZE);
     uint64 len = count - i < PGSIZE - off ? count - i : PGSIZE - off;
     uint64 r = do_write(fd, (char *)pa + off, len);
@@ -766,7 +788,7 @@ ssize_t sys_user_lseek(int fd, int offset, int whence) {
 // read vinode
 //
 ssize_t sys_user_stat(int fd, struct istat *istat) {
-  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current->pagetable), istat);
+  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), istat);
   return do_stat(fd, pistat);
 }
 
@@ -774,7 +796,7 @@ ssize_t sys_user_stat(int fd, struct istat *istat) {
 // read disk inode
 //
 ssize_t sys_user_disk_stat(int fd, struct istat *istat) {
-  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current->pagetable), istat);
+  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), istat);
   return do_disk_stat(fd, pistat);
 }
 
@@ -789,7 +811,7 @@ ssize_t sys_user_close(int fd) {
 // lib call to opendir
 //
 ssize_t sys_user_opendir(char * pathva){
-  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), pathva);
   return do_opendir(pathpa);
 }
 
@@ -797,7 +819,7 @@ ssize_t sys_user_opendir(char * pathva){
 // lib call to readdir
 //
 ssize_t sys_user_readdir(int fd, struct dir *vdir){
-  struct dir * pdir = (struct dir *)user_va_to_pa((pagetable_t)(current->pagetable), vdir);
+  struct dir * pdir = (struct dir *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), vdir);
   return do_readdir(fd, pdir);
 }
 
@@ -805,7 +827,7 @@ ssize_t sys_user_readdir(int fd, struct dir *vdir){
 // lib call to mkdir
 //
 ssize_t sys_user_mkdir(char * pathva){
-  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), pathva);
   return do_mkdir(pathpa);
 }
 
@@ -820,8 +842,8 @@ ssize_t sys_user_closedir(int fd){
 // lib call to link
 //
 ssize_t sys_user_link(char * vfn1, char * vfn2){
-  char * pfn1 = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn1);
-  char * pfn2 = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn2);
+  char * pfn1 = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void*)vfn1);
+  char * pfn2 = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void*)vfn2);
   return do_link(pfn1, pfn2);
 }
 
@@ -829,7 +851,7 @@ ssize_t sys_user_link(char * vfn1, char * vfn2){
 // lib call to unlink
 //
 ssize_t sys_user_unlink(char * vfn){
-  char * pfn = (char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)vfn);
+  char * pfn = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void*)vfn);
   return do_unlink(pfn);
 }
 
@@ -840,7 +862,7 @@ ssize_t sys_user_exec(char *s,char *para)
   /// /bin/app_mkdir
   // int fd=do_open(pathpa,O_RDWR | O_CREAT);
   //process *st=alloc_page();
-  syscall_load_bincode_from_host_elf(current,s,para);
+  syscall_load_bincode_from_host_elf(current[readtp()],s,para);
   // //sprint("fd:%d\n",fd);
   // //sprint("0\n");
   return -1;
@@ -848,13 +870,13 @@ ssize_t sys_user_exec(char *s,char *para)
 }
 ssize_t sys_user_ccwd(char *path){
   //char *path1=path;
-  char *path1=user_va_to_pa(current->pagetable,path);//查询到当前的进程路径
+  char *path1=user_va_to_pa(current[readtp()]->pagetable,path);//查询到当前的进程路径
   if(*path1=='.'&&*(path1+1)=='.')
-    strcpy(current->pfiles->cwd->name,"/");
+    strcpy(current[readtp()]->pfiles->cwd->name,"/");
   else if(*path1=='.'&&*(path1+1)=='/')
   {
    //sprint("change1:%s\n",path1);
-    strcpy(current->pfiles->cwd->name,path1+1);
+    strcpy(current[readtp()]->pfiles->cwd->name,path1+1);
     //sprint("change1:%s\n",path);
     //strcpy(user)
   }
@@ -866,7 +888,7 @@ ssize_t sys_user_rcwd(char *path){
  
   //sprint("read1:%s\n",user_va_to_pa(current->pagetable,path))
   //存在path时要放在实地址
-  strcpy((char*)user_va_to_pa(current->pagetable,path),current->pfiles->cwd->name);
+  strcpy((char*)user_va_to_pa(current[readtp()]->pagetable,path),current[readtp()]->pfiles->cwd->name);
   //strcpy((char*)path,current->pfiles->cwd->name);
   return 0;
 }

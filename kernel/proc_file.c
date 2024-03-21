@@ -18,6 +18,7 @@
 //
 // initialize file system
 //
+
 void fs_init(void) {
   // initialize the vfs
   vfs_init();
@@ -65,10 +66,10 @@ void reclaim_proc_file_management(proc_file_management *pfiles) {
 //
 struct file *get_opened_file(int fd) {
   struct file *pfile = NULL;
-
+  uint64 tp=read_tp();
   // browse opened file list to locate the fd
   for (int i = 0; i < MAX_FILES; ++i) {
-    pfile = &(current->pfiles->opened_files[i]);  // file entry
+    pfile = &(current[tp]->pfiles->opened_files[i]);  // file entry
     if (i == fd) break;
   }
   if (pfile == NULL) panic("do_read: invalid fd!\n");
@@ -80,25 +81,25 @@ struct file *get_opened_file(int fd) {
 // return: -1 on failure; non-zero file-descriptor on success.
 //
 int do_open(char *pathname, int flags) {
- 
+  uint64 tp=read_tp();
   struct file *opened_file = NULL;
   sprint("do_open:%s\n",pathname);
   if ((opened_file = vfs_open(pathname, flags)) == NULL) return -1;
  //sprint("111\n");
   int fd = 0;
-  if (current->pfiles->nfiles >= MAX_FILES) {
+  if (current[tp]->pfiles->nfiles >= MAX_FILES) {
     panic("do_open: no file entry for current process!\n");
   }
   struct file *pfile;
   for (fd = 0; fd < MAX_FILES; ++fd) {
-    pfile = &(current->pfiles->opened_files[fd]);
+    pfile = &(current[tp]->pfiles->opened_files[fd]);
     if (pfile->status == FD_NONE) break;
   }
 
   // initialize this file structure
   memcpy(pfile, opened_file, sizeof(struct file));
 
-  ++current->pfiles->nfiles;
+  ++current[tp]->pfiles->nfiles;
   
   return fd;
 }
@@ -168,13 +169,14 @@ int do_close(int fd) {
 // return: the fd of the directory file
 //
 int do_opendir(char *pathname) {
+  uint64 tp=read_tp();
   struct file *opened_file = NULL;
   if ((opened_file = vfs_opendir(pathname)) == NULL) return -1;
 
   int fd = 0;
   struct file *pfile;
   for (fd = 0; fd < MAX_FILES; ++fd) {
-    pfile = &(current->pfiles->opened_files[fd]);
+    pfile = &(current[tp]->pfiles->opened_files[fd]);
     if (pfile->status == FD_NONE) break;
   }
   if (pfile->status != FD_NONE)  // no free entry
@@ -183,7 +185,7 @@ int do_opendir(char *pathname) {
   // initialize this file structure
   memcpy(pfile, opened_file, sizeof(struct file));
 
-  ++current->pfiles->nfiles;
+  ++current[tp]->pfiles->nfiles;
   return fd;
 }
 
