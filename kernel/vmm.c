@@ -17,7 +17,7 @@
 // with the permission of "perm".
 //
 int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm) {
-  uint64 first, last;
+ uint64 first, last;
   pte_t *pte;
   pte= page_walk(page_dir,va, 1);
   if(*pte==0x100)
@@ -26,17 +26,24 @@ int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm)
       first <= last; first += PGSIZE, pa += PGSIZE) {
     if ((pte = page_walk(page_dir, first, 1)) == 0) return -1;
     if (*pte & PTE_V)
-      panic("map_pages fails on mapping va (0x%lx) to pa (0x%lx)", first, pa);
+      {
+      sprint("map_pages fails on mapping va 0x%x to pa 0x%x\n", first, pa);
+      panic("map_pages fails!");
+      }
     *pte = PA2PTE(pa) |perm |PTE_V|0x100 ;
       }
       //sprint("pte:%x\n",*pte);
       return 0;
   }
+
   for (first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
       first <= last; first += PGSIZE, pa += PGSIZE) {
     if ((pte = page_walk(page_dir, first, 1)) == 0) return -1;
     if (*pte & PTE_V)
-      panic("map_pages fails on mapping va (0x%lx) to pa (0x%lx)", first, pa);
+    {
+      sprint("map_pages fails on mapping va 0x%x to pa 0x%x\n", first, pa);
+      panic("map_pages fails!");
+    }
     *pte = PA2PTE(pa) | perm | PTE_V;
   }
   return 0;
@@ -46,13 +53,20 @@ int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm)
 // convert permission code to permission types of PTE
 //
 uint64 prot_to_type(int prot, int user) {
-  uint64 perm = 0;
-  if (prot & PROT_READ) perm |= PTE_R | PTE_A;
-  if (prot & PROT_WRITE) perm |= PTE_W | PTE_D;
-  if (prot & PROT_EXEC) perm |= PTE_X | PTE_A;
-  if (perm == 0) perm = PTE_R;
-  if (user) perm |= PTE_U;
-  return perm;
+uint64 perm = 0;
+  if (prot & PROT_READ)
+    perm |= PTE_R | PTE_A;
+  if (prot & PROT_WRITE)
+    perm |= PTE_W | PTE_D;
+  if (prot & PROT_EXEC)
+    perm |= PTE_X | PTE_A;
+  if (perm == 0)
+    perm = PTE_R;
+  if (prot & PROT_COW)
+    perm |= PTE_C | PTE_A;
+  if (user)
+    perm |= PTE_U;
+  return perm;;
 }
 
 //

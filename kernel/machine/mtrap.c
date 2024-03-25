@@ -32,9 +32,9 @@ void handle_mtrap() {
   uint64 mcause = read_csr(mcause);
   if(mcause==CAUSE_ILLEGAL_INSTRUCTION)
   {
-    
-    addr_line *line = current[tp]->line;
-    uint64 cause_addr=read_csr(mepc);
+    //sprint("111\n");
+  addr_line *line = current[tp]->line;
+  uint64 cause_addr=read_csr(mepc);
   int i=0,dir1=0,line1=0,len=0;
   char s1[1000],s2[1000],buf,s3[1000],s[1000]="\0";
   spike_file_t *fn;
@@ -43,11 +43,13 @@ void handle_mtrap() {
   //     if(current->line[i].addr==cause_addr) 
   //     sprint("addr:%x line:%x file:%x\n",current->line[i].addr,current->line[i].line,current->line[i].file);
   // }
+  //sprint("mepc:%x\n",cause_addr);
   for(i=0;line[i].addr!='\0';i++) 
   {
     if(line[i].addr==cause_addr)
     {
       line1=line[i].line;
+      //sprint("111\n");
       break;
     }
   }

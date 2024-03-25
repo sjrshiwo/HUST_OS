@@ -46,4 +46,6 @@ int sem_V(int a1);
 int sem_new(int i);
 int sem_P(int a1);
 void printpa(int* va);
+int gets(char *s);
+int exec1(char *s,char *para);
 #endif

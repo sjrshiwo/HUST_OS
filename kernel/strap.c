@@ -10,9 +10,9 @@
 #include "vmm.h"
 #include "sched.h"
 #include "util/functions.h"
-
+#include "memlayout.h"
 #include "spike_interface/spike_utils.h"
-
+#include "string.h"
 //
 // handling the syscalls. will call do_syscall() defined in kernel/syscall.c
 //
@@ -46,22 +46,65 @@ void handle_mtimer_trap() {
 
 }
 
-//
+
 // the page fault handler. added @lab2_3. parameters:
 // sepc: the pc when fault happens;
 // stval: the virtual address that causes pagefault when being accessed.
-//
+
+// void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval)
+// {
+//   // sprint("handle_page_fault: %lx\n", stval);
+//   uint64 pa;
+//   uint64 va = ROUNDDOWN(stval, PGSIZE);
+//   uint64 tp=read_tp();
+//   sprint("%x\n",stval<current[tp]->trapframe->regs.sp);
+//   pte_t *pte = page_walk(current[tp]->pagetable, va, 0);
+//   switch (mcause)
+//   {
+//   case CAUSE_STORE_PAGE_FAULT:
+//     if (pte == NULL)
+//     {
+//       pa = (uint64)alloc_page(); // allocate a new physical page
+//       if ((void *)pa == NULL)
+//         panic("Can not allocate a new physical page.\n");
+//       map_pages(current[tp]->pagetable, ROUNDDOWN(stval, PGSIZE), PGSIZE, pa, prot_to_type(PROT_READ | PROT_WRITE, 1)); // maps the new page to the virtual address that causes the page fault
+//     }
+//     else if (*pte & PTE_C)
+//     {
+//       void *pa = alloc_page();
+//       memcpy(pa, (void *)lookup_pa(current[tp]->pagetable, va), PGSIZE);
+//       *pte = PTE_V | PA2PTE(pa) | prot_to_type(PROT_READ | PROT_WRITE, 1);
+//       *pte &= ~PTE_C;
+//     }
+//     else if (stval < USER_STACK_TOP && stval > (USER_STACK_TOP - 20 * STACK_SIZE))
+//     {
+//       map_pages(current[tp]->pagetable, va, PGSIZE, (uint64)alloc_page(), prot_to_type(PROT_READ | PROT_WRITE, 1));
+//       break;
+//     }
+//     else
+//       panic("unknown page fault.\n");
+//     break;
+//   default:
+//     panic("unknown page fault.\n");
+//     break;
+//   }
+// }
+
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
   uint64 tp=read_tp();
+
   sprint("handle_page_fault: %lx\n", stval);
-    if(stval<current[tp]->trapframe->regs.sp&&mcause!=CAUSE_STORE_PAGE_FAULT)
-    {
-      sprint("sp:%x\n",current[tp]->trapframe->regs.sp);
+  uint64 pa=lookup_pa(current[tp]->pagetable, stval);
+  //sprint("strap:%x\n",current[tp]->trapframe->regs.sp);
+  //sprint("pa:%x\n",pa);
+  if(stval<current[tp]->trapframe->regs.sp&&!pa)
+  {
+      //sprint("sp:%x\n",current[tp]->trapframe->regs.sp);
      //超出用户栈
     // if(stval<(uint64)0x7ffff000) 
       // sprint("%lx\n",stval);
     panic("this address is not available!");
-    }
+  }
   switch (mcause) {
     case CAUSE_STORE_PAGE_FAULT:
     {
@@ -84,6 +127,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
           prot_to_type(PROT_WRITE | PROT_READ, 1));
           //user_vm_map
     //stval+=PGSIZE;
+    //panic("1");
       break;
     }
     default:

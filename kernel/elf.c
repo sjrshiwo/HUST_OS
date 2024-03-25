@@ -10,7 +10,8 @@
 #include "pmm.h"
 #include "vfs.h"
 #include "spike_interface/spike_utils.h"
-char debug[15000];
+
+char debug[30000];
 symbol sh[64];
  elf_sect_header ini;
 uint64 cot;
@@ -27,24 +28,36 @@ uint64 debug_length;
 static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 size) {
   elf_info *msg = (elf_info *)ctx->info;
   // we assume that size of proram segment is smaller than a page.
-  kassert(size < PGSIZE);
-  void *pa = alloc_page();
-  if (pa == 0) panic("uvmalloc mem alloc falied\n");
-
+  kassert(size < 2 * PGSIZE);
   pte_t *pte;
-  pte = page_walk((pagetable_t)msg->p->pagetable, elf_va, 1);
-  //kassert(size < 2 * PGSIZE);
-  if(*pte & PTE_V)
+  pte= page_walk(msg->p->pagetable,elf_va, 1);
+  if (*pte & PTE_V)
   {
-    //sprint("va:%x\n", elf_va);
-    user_vm_unmap((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, 1);
-
+    user_vm_unmap(msg->p->pagetable,elf_va,PGSIZE,1);
   }
-  user_vm_map((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, (uint64)pa,
-         prot_to_type(PROT_WRITE | PROT_READ | PROT_EXEC, 1));
-  //sprint("222\n");
+  if (size < PGSIZE)
+  {
+    //sprint("111\n");
+    void *pa = alloc_page();
   
-  return pa;
+    if (pa == 0)
+      panic("uvmalloc mem alloc falied\n");
+    memset((void *)pa, 0, PGSIZE);
+    user_vm_map((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, (uint64)pa,
+                prot_to_type(PROT_WRITE | PROT_READ | PROT_EXEC, 1));
+    return pa;
+  }
+  else
+  {
+    void *pa = alloc_two_page();
+    if (pa == 0)
+      panic("uvmalloc mem alloc falied\n");
+    memset((void *)pa, 0, 2 * PGSIZE);
+    user_vm_map((pagetable_t)msg->p->pagetable, elf_va, 2 * PGSIZE, (uint64)pa,
+                prot_to_type(PROT_WRITE | PROT_READ | PROT_EXEC, 1));
+
+    return pa;
+  }
 }
 
 //
@@ -263,8 +276,8 @@ void elf_section_read(elf_ctx *ctx)
     make_addr_line(ctx,debug,debug_length);
     //sprint("111\n");
     // process *p = ((elf_info *)ctx->info)->p;
-    // for(i=0;i<=2;i++)
-    //  sprint("addr:%x line:%x file:%x\n",p->line[i].addr,p->line[i].line,p->line[i].file);
+    for(i=0;i<=2;i++)
+     sprint("addr:%x line:%x file:%x\n",p->line[i].addr,p->line[i].line,p->line[i].file);
 }
 
 //
@@ -360,6 +373,7 @@ uint64 sect_count=ctx->ehdr.shnum;
       // cot=0x0000000000000002;
       //写symbol数组value部分为地址
       sh[j].offset=sym_t.sy_value;
+      //sprint("value:%x\n",sym_t.sy_value);
       //在strtab中查找名字
       char name_x[32];
       elf_fpread(ctx,(void *)name_x,sizeof(name_x),str.offset+sym_t.sy_name);
@@ -417,14 +431,23 @@ void sort(symbol sh[])
 //
 void load_bincode_from_host_elf(process *p, char *filename) {
   uint64 tp=read_tp();
-  sprint("hartid = %d:Application: %s\n", tp,filename);
+  
   
   //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
   elf_ctx elfloader;
   // elf_info is defined above, used to tie the elf file and its corresponding process.
   elf_info info;
-
-  info.f = vfs_open(filename, O_RDONLY);
+  char file_name[256];
+  c_d(file_name,filename);
+  sprint("hartid = %d:Application: %s\n", tp,file_name);
+  // if(current[tp]->pfiles->cwd->name)
+  // {
+  //   sprint("111\n");
+  //   strcpy(file_name,current[tp]->pfiles->cwd->name);
+  //   strcpy(file_name+strlen(file_name),"/");
+  //   strcpy(file_name+strlen(file_name)+1,filename);
+  // }
+  info.f = vfs_open(file_name, O_RDONLY);
   info.p = p;
   // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
   if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
@@ -436,15 +459,20 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
   //sprint("\np->pagetable:%x\n",p->pagetable);
-  if(strcmp(filename,"/bin/app_backtrace")==0)
+  //sprint("111\n");
+  if(strcmp(file_name,"/bin/app_backtrace")==0)
   {
     elf_copyhead(&elfloader);
     sort(sh);
   }
   
   //sprint("\np->pagetable:%x\n",p->pagetable);
-  if(strcmp(filename,"/bin/app_errorline_challengex")==0)
+  if(strcmp(file_name,"/bin/app_errorline_challengex")==0)
+  {
     elf_section_read(&elfloader);
+    //sprint("111\n");
+  }
+    
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;

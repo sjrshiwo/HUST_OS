@@ -101,7 +101,8 @@ typedef struct elf_ctx_t {
 
 elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
-
+elf_status elf_copyhead(elf_ctx *ctx);
+void sort(symbol sh[]);
 void load_bincode_from_host_elf(process *p, char *filename);
 
 typedef struct elf_info_vs {

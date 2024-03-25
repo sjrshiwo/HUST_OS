@@ -114,6 +114,7 @@ void init_proc_pool();
 process* alloc_process();
 // reclaim a process, destruct its vm space and free physical pages.
 int free_process( process* proc );
+int free_p( process* proc );
 // fork a child from parent
 int do_fork(process* parent);
 ssize_t process_wait(int pid);

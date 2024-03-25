@@ -25,6 +25,11 @@ uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, u
 
   return ret;
 }
+int gets(char *s)
+{
+
+ return do_user_call(SYS_user_gets, (uint64)s, 0, 0, 0, 0, 0, 0);
+}
 void printpa(int* va)
 {
   do_user_call(SYS_user_printpa, (uint64)va, 0, 0, 0, 0, 0, 0);
@@ -41,7 +46,6 @@ int sem_V(int a1)
 {
   return do_user_call(SYS_user_sem_V, a1, 0, 0, 0, 0, 0, 0);
 }
-
 
 void* better_malloc(int n) {
   return (void*)do_user_call(SYS_user_allocate, n, 0, 0, 0, 0, 0, 0);
@@ -213,7 +217,12 @@ int exec(char *s,char *para)
   
    return do_user_call(SYS_user_exec,(uint64)s, (uint64)para, 0, 0, 0, 0, 0);
 }
-
+int exec1(char *s,char *para)
+{
+   //printu("%s\n",s);
+  
+   return do_user_call(SYS_user_exec1,(uint64)s, (uint64)para, 0, 0, 0, 0, 0);
+}
 //
 // lib call to read present working directory (pwd)
 //

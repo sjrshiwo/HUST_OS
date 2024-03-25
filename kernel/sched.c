@@ -7,7 +7,7 @@
 extern int l[100];
 process* wait_queue_head= NULL;
 process* ready_queue_head = NULL;
-
+extern int sem_s;
 //
 // insert a process, proc, into the END of ready queue.
 //
@@ -35,6 +35,23 @@ void insert_to_ready_queue( process* proc ) {
 
   return;
 }
+void insert_to_ready_queue_head( process* proc ) {
+  sprint( "going to insert process %d to ready queue head.\n", proc->pid );
+   if( ready_queue_head == NULL ){
+    proc->status = READY;
+    proc->queue_next = NULL;
+    ready_queue_head = proc;
+    return;
+  }
+  else 
+  {
+    process *p;
+    p=ready_queue_head;
+    proc->status = READY;
+    proc->queue_next = p;
+    ready_queue_head=proc;
+  }
+}
 
 //
 // choose a proc from the ready queue, and put it to run.
@@ -52,10 +69,12 @@ void schedule(int type) {
     int flag=0;
     process t=*wait_queue_head;    
     process *head=wait_queue_head;
+    //sprint("3\n");
     process *tp;
     process *pro=NULL;
     //sprint("%d\n",current->parent->pid);//子进程号是2
     //sprint("%d\n",t.pid);//第一个父进程号是1
+    
     if(current[cpu]->parent!=NULL)
     {
       while(1)
@@ -78,7 +97,7 @@ void schedule(int type) {
     //sprint("%d\n",flag);
    //以上正确
     if(flag==1)
-    {
+    { //sprint("wait!\n");
       //sprint("111\n");
       for(;;)
       {
@@ -127,24 +146,44 @@ void schedule(int type) {
   // }
       //sprint("22\n"); 
       //sprint("111\n");
-      current[cpu]=&t;
-      current[cpu]->status = RUNNING;
-      sprint("going to insert process %d%d to ready queue.\n",current[cpu]->pid );
-      sprint( "going to schedule process %d%d to run.\n", current[cpu]->pid );
-      switch_to( current[cpu] );
+      //sprint("333\n");
+      process *ss=&t;
+      if(ready_queue_head!=NULL&&ready_queue_head!=0)
+      {
+        //sprint("222\n");
+        insert_to_ready_queue(&t);
+        current[cpu] = ready_queue_head;
+        assert( current[cpu]->status == READY );
+        ready_queue_head = ready_queue_head->queue_next;
+        current[cpu]->status = RUNNING;
+        sprint( "going to schedule process %d to run.\n", current[cpu]->pid );
+        switch_to( current[cpu] );
+      }
+      else 
+      { 
+        //sprint("111\n");
+        current[cpu]=&t;
+        current[cpu]->status = RUNNING;
+        sprint( "going to insert process %d to ready queue.\n", current[cpu]->pid );
+        sprint( "going to schedule process %d to run.\n", current[cpu]->pid );
+        switch_to( current[cpu] );
+      }
+      return ;
+      // current[cpu]=&t;
+      // current[cpu]->status = RUNNING;
+      // sprint( "going to schedule process %d to run.\n", current[cpu]->pid );
+      // switch_to( current[cpu] );
       
     }
   }
   else if ( !ready_queue_head ){
     // by default, if there are no ready process, and all processes are in the status of
     // FREE and ZOMBIE, we should shutdown the emulated RISC-V machine.
-   
-    
+     //sprint("2222\n");
     int should_shutdown = 1;
-    //sprint("no wait\n");
+
     for( int i=0; i<NPROC; i++ )
       if( (procs[i].status != FREE) && (procs[i].status != ZOMBIE) ){
-        
         should_shutdown = 0;
         //sprint("%d\n",procs[i].pid);
         sprint( "ready queue empty, but process %d is not in free/zombie state:%d\n", 
@@ -158,7 +197,6 @@ void schedule(int type) {
       panic( "Not handled: we should let system wait for unfinished processes.\n" );
     }
   }
-
   current[cpu] = ready_queue_head;
   assert( current[cpu]->status == READY );
   ready_queue_head = ready_queue_head->queue_next;
@@ -211,13 +249,13 @@ void wake_wait_queue(int a1)
         if(p==wait_queue_head)
         {
           wait_queue_head=p->queue_next;
-          insert_to_ready_queue(p);
+          insert_to_ready_queue_head(p);
           
         }
         else
         {
           front->queue_next=p->queue_next;
-          insert_to_ready_queue(p);
+          insert_to_ready_queue_head(p);
         }
         break;
       }

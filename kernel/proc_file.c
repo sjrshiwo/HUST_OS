@@ -225,3 +225,44 @@ int do_link(char *oldpath, char *newpath) {
 int do_unlink(char *path) {
   return vfs_unlink(path);
 }
+void c_d(char *resultpath, char *pathpa)
+{
+  uint64 tp=read_tp();
+  
+    
+  if (*pathpa != '.' && *pathpa != '/')
+  {
+    //sprint("cwd:%s",current[tp]->pfiles->cwd->name);
+    strcpy(resultpath, current[tp]->pfiles->cwd->name);
+    if (!strcmp(resultpath, "/"))
+      *resultpath = 0;
+    strcat(resultpath, "/");
+    strcat(resultpath, pathpa);
+  }
+  else if (*pathpa == '.' && *(pathpa + 1) != '.')
+  {
+    //sprint("cwd:%s",current[tp]->pfiles->cwd->name);
+    strcpy(resultpath, current[tp]->pfiles->cwd->name);
+    if (!strcmp(resultpath, "/"))
+      *resultpath = 0;
+    strcat(resultpath, (pathpa + 1));
+  }
+  else if (*pathpa == '.' && *(pathpa + 1) == '.')
+  {
+    //sprint("cwd:%s",current[tp]->pfiles->cwd->name);
+    if (current[tp]->pfiles->cwd->parent)
+    {
+      strcpy(resultpath, current[tp]->pfiles->cwd->parent->name);
+      if (!strcmp(resultpath, "/"))
+        *resultpath = 0; // ignore the "/"
+      strcat(resultpath, pathpa);
+    }
+    else
+      strcpy(resultpath, "/");
+  }
+  else
+    {
+    //sprint("cwd:%s",current[tp]->pfiles->cwd->name);
+    strcpy(resultpath, pathpa);
+    }
+}

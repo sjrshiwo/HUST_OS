@@ -51,6 +51,13 @@ void vprintk(const char* s, va_list vl) {
   spike_file_write(stderr, out, res < sizeof(out) ? res : sizeof(out));
 }
 
+char vgetc(spike_file_t* f) {
+  char c;
+  if(spike_file_read(f, &c, 1)==1)
+    return c;
+  return -1;
+}
+
 void printk(const char* s, ...) {
   va_list vl;
   va_start(vl, s);

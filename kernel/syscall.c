@@ -16,6 +16,9 @@
 #include "proc_file.h"
 #include "elf.h"
 #include "spike_interface/spike_utils.h"
+#include "spike_interface/spike_file.h"
+int sem_s=0;
+extern process* ready_queue_head;
 volatile int count_4=0;
 volatile int count_7=0;
 extern symbol sh[64];
@@ -82,8 +85,9 @@ int sys_user_sem_P(int a1)
 //insert_to_ready_queue
 int sys_user_sem_V(int a1)
 {
+  sem_s=1;
   l[a1]+=1;
-  wake_wait_queue(a1);
+  wake_wait_queue(a1);//将下一个子进程插入了就绪队列
   //if(l[a1]>0) l[a1]=l[a1]-1;
   return 1;
 }
@@ -329,7 +333,7 @@ uint64 sys_user_better_allocate_page(uint64 a1) {
   //虚拟地址是va 物理地址pa
   //由pgsize可知一个物理页面是4k的大小分配前应该判断当前物理页面是否用完9+
   int i=0,j=0;
- 
+ //sprint("11\n");
 
   //sprint("start_va:%x\n",g_ufree_page);
   if(first==0)
@@ -367,7 +371,12 @@ uint64 sys_user_better_allocate_page(uint64 a1) {
    //sprint("va1:%x\n",va);
    for(j=1;j<=i;j++)
   {
-    
+     pte_t *pte;
+    pte= page_walk((pagetable_t)current[(readtp())]->pagetable, g_malloc_page, 1);
+    if (*pte & PTE_V)
+     {
+      user_vm_unmap((pagetable_t)current[(readtp())]->pagetable,g_malloc_page,PGSIZE, 1);
+     }
     user_vm_map((pagetable_t)current[(readtp())]->pagetable, g_malloc_page, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
     g_malloc_page+=PGSIZE;     
@@ -462,76 +471,68 @@ uint64 sys_user_better_free_page(uint64 va) {
   //sprint("444\n");
   return 0;
 }
-
-ssize_t sys_user_lab1_challenge1(uint64 a1)
+void do_exec(char *s, char *para)
 {
-  //sprint("in syscall\n");
+  //elf_info info;
+  //sprint("do exec\n");
+  char *filename=(char *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), s);
+  char *argv=(char *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), para);
+  process *p = alloc_process();
+  load_bincode_from_host_elf(p, filename);
+  //sprint("pid:%d",p->pid);
+  //sprint("id:%d\n",current[readtp()]->pid);
+  //sprint("p->parent:%d\n",p->parent->pid);
+  //sprint("current[readtp()]->parent%d\n",current[readtp()]->parent);
+  free_p(current[readtp()]);
+  current[readtp()]->kstack = p->kstack;
+  current[readtp()]->pagetable = p->pagetable;
+  current[readtp()]->trapframe = p->trapframe;
+  current[readtp()]->total_mapped_region = p->total_mapped_region;
+  current[readtp()]->mapped_info = p->mapped_info;
+  current[readtp()]->user_heap = p->user_heap;
+  //current[readtp()]->parent = curre->parent;
+  current[readtp()]->line=p->line;
+  current[readtp()]->file=p->file;
+  current[readtp()]->dir=p->dir;
+  current[readtp()]->debugline=p->debugline;
+  current[readtp()]->queue_next = p->queue_next;
+  current[readtp()]->tick_count = p->tick_count;
+  current[readtp()]->pfiles = p->pfiles;
+  current[readtp()]->pid=p->pid;
+  // better malloc
+  void *pa = alloc_page();
+  uint64 va = current[readtp()]->user_heap.heap_top;
+  current[readtp()]->user_heap.heap_top += PGSIZE;
+  current[readtp()]->mapped_info[HEAP_SEGMENT].npages++;
+  //sprint("1\n");
+  user_vm_map((pagetable_t)current[readtp()]->pagetable, va, PGSIZE, (uint64)pa, prot_to_type(PROT_WRITE | PROT_READ, 1));
+  //sprint("1\n");
+  memset(pa, 0, PGSIZE);
+
   
-  uint64 n=1;
-  uint64 i=0; 
-  assert(current[readtp()]);
-  //uint64 addr1=current->trapframe->kernel_sp;
-  //USER_STACK
-  //sp是高地址
-  //sprint("kstack:%lx\n",current->trapframe->regs.s0);
-  //
-  //print的栈最高地址0x810fff70 0x810ffff70-8返回地址为0x8100000e即调用print的下一个地址 0x810ffff70-16为0x810fff80下一个函数栈为f7引用f8存f8的返回地址
-  //栈标识的fp分别为0x810fff70 0x810fff80 0x810fff90 0x810fffa0...
-  //
- //uint64 ar1=current->trapframe->regs.sp+16;//s0寄存器保存函数调用的栈顶
- //sprint("%x\n",current->trapframe->regs.sp);
+  char *pathpa[2];
+  uint64 vsp;
+  vsp=p->trapframe->regs.sp;
+  vsp-=8;
+  char * sp=user_va_to_pa((pagetable_t)(p->pagetable),(void *)vsp);
+  memcpy((void *)sp,(void *)argv,1+strlen(argv));
+  //sprint("sp:%s\n",sp);
+  //sprint("vsp:%x\n",vsp);
+  //sprint("%x\n",strlen(pa));
+  uint64 vsp1=vsp;
+  vsp-=8;
+  //sprint("%x\n",sp);
+  char *sp3=user_va_to_pa((pagetable_t)(p->pagetable),(void *)vsp);
+ // sprint("%x\n",sp);
+  uint64 *sp2=(uint64 *)sp3;
+  //sprint("vsp:%x\n",vsp);
+  *sp2=(vsp+8);
+  current[readtp()]->trapframe->regs.sp -= 16;
+  current[readtp()]->trapframe->regs.a1 = (uint64)vsp;
+  current[readtp()]->trapframe->regs.a0 = (uint64)1;
 
- //10082对应的是print_trace的ra ra-8里面存的是fp
- uint64 va=current[readtp()]->trapframe->regs.sp;
-  uint64 ar1=0;
-//sprint("%x\n",(va));
-// for(i=0;i<=20;i++)
-// {
-//   ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)current->trapframe->regs.sp+i*8);
-//   sprint("%d %x\n",i,(ar1));
-// }
-va=va+24;
-  ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void *)current[readtp()]->trapframe->regs.sp+3*8);
-
-
-//  for(i=0;i<=11;i++)
-//   sprint("%lx\n",sh[i].offset);
-//  sprint("%lx\n",*(uint64 *)(ar1-8));
-   while(n<=a1)
-    {
-    
-   for(i=0;sh[i].offset!=1;i++)
-   {
-      //sprint("%x\n",sh[i].offset);
-      //sprint("%x\n",sh[i+1].offset);
-       //sprint("%x\n",*(uint64 *)(ar1-8));
-      if(ar1>=sh[i].offset&&ar1<sh[i+1].offset)
-      {
-        sprint("%s\n",sh[i].name);
-        break;
-      }
-     }
-     va=va+16;
-     ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable),(void *) va);
-     //ar1= *(uint64 *)(ar1-16);
-      n+=1;
-  }
-//  for(i=0;i<=10;i++)
-//   {
-//   sprint("%ld号地址内容:%lx\n",i,*(uint64 *)(0x810fff70-i*8));
-//      //读栈
-//  }
-// 读elf
-  // for(i=0;i<=10;i++)
-  // {
-  //   sprint("elf:%s\n",sh[i].name);
-  // }
-  // sprint("elf_sect:%lx\n",cot);
-  //sprint("kstack:%lx\n",current->trapframe->epc);
-  return 0;
+  switch_to(current[readtp()]);
 }
-
-
 void syscall_load_bincode_from_host_elf(process *p,char *s,char *para) {
   //arg_buf arg_bug_msg;
 
@@ -611,6 +612,66 @@ void syscall_load_bincode_from_host_elf(process *p,char *s,char *para) {
   sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
   //switch_to(current);
 }
+
+ssize_t sys_user_lab1_challenge1(uint64 a1)
+{
+  //sprint("in syscall\n");
+  
+  uint64 n=1;
+  uint64 i=0; 
+  assert(current[readtp()]);
+  //uint64 addr1=current->trapframe->kernel_sp;
+  //USER_STACK
+  //sp是高地址
+  //sprint("kstack:%lx\n",current->trapframe->regs.s0);
+  //
+  //print的栈最高地址0x810fff70 0x810ffff70-8返回地址为0x8100000e即调用print的下一个地址 0x810ffff70-16为0x810fff80下一个函数栈为f7引用f8存f8的返回地址
+  //栈标识的fp分别为0x810fff70 0x810fff80 0x810fff90 0x810fffa0...
+  //
+ //uint64 ar1=current->trapframe->regs.sp+16;//s0寄存器保存函数调用的栈顶
+ //sprint("%x\n",current->trapframe->regs.sp);
+
+ //10082对应的是print_trace的ra ra-8里面存的是fp
+  uint64 va=current[readtp()]->trapframe->regs.sp;
+  uint64 ar1=0;
+//sprint("%x\n",(va));
+// for(i=0;i<=20;i++)
+// {
+//   ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void *)current[readtp()]->trapframe->regs.sp+i*8);
+//   sprint("%d %x\n",i,(ar1));
+// }
+  va=va+24;
+  ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), (void *)current[readtp()]->trapframe->regs.sp+3*8);
+
+
+//  for(i=0;i<=11;i++)
+//   sprint("%lx\n",sh[i].offset);
+//  sprint("%lx\n",*(uint64 *)(ar1-8));
+  while(n<=a1)
+  {
+    //sprint("11\n");
+   for(i=0;sh[i].offset!=1;i++)
+    {
+      //sprint("11\n");
+      //sprint("%x\n",sh[i].offset);
+      //sprint("%x\n",sh[i+1].offset);
+       //sprint("%x\n",*(uint64 *)(ar1-8));
+      if(ar1>=sh[i].offset&&ar1<sh[i+1].offset)
+      {
+        sprint("%s\n",sh[i].name);
+        break;
+      }
+    }
+     va=va+16;
+     ar1 = *(uint64 *)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable),(void *) va);
+     //ar1= *(uint64 *)(ar1-16);
+      n+=1;
+  }
+
+  return 0;
+}
+
+
 //
 // implement the SYS_user_print syscall
 //
@@ -639,10 +700,14 @@ ssize_t sys_user_exit(uint64 code) {
   uint64 tp=read_tp();
   sprint("hartid = %d: User exit with code: %d.\n",tp, code);
   sync_barrier(&count_4,NCPU);
- 
+  
   if (tp == 0)
   {
+    //sprint("1\n");
+    //sprint("id:%d\n",current[tp]->pid);
     free_process(current[tp]);
+   // sprint("2\n");
+    
     schedule(1);
   }
   else
@@ -652,7 +717,7 @@ ssize_t sys_user_exit(uint64 code) {
     //schedule(1);
   }
   sync_barrier(&count_7,NCPU);
-  //shutdown(code);
+  shutdown(code);
   return 0;
 }
 
@@ -723,6 +788,7 @@ ssize_t sys_user_yield() {
 //
 ssize_t sys_user_open(char *pathva, int flags) {
   char* pathpa = (char*)user_va_to_pa((pagetable_t)(current[readtp()]->pagetable), pathva);
+  //sprint("patha:%s\n",pathpa);
   char pathb[30];
   if(*pathpa=='.'&&*(pathpa+1)=='.')
   {
@@ -741,7 +807,12 @@ ssize_t sys_user_open(char *pathva, int flags) {
     }
     //sprint("111\n");
   }
-  //sprint("111\n");
+  else if(*pathpa!='.')
+  {
+    strcpy(pathb,pathpa);
+  }
+  
+  //sprint("pathb:%s\n",pathb);
   return do_open(pathb, flags);
 }
 
@@ -862,11 +933,24 @@ ssize_t sys_user_exec(char *s,char *para)
   /// /bin/app_mkdir
   // int fd=do_open(pathpa,O_RDWR | O_CREAT);
   //process *st=alloc_page();
-  syscall_load_bincode_from_host_elf(current[readtp()],s,para);
+  do_exec(s,para);
   // //sprint("fd:%d\n",fd);
   // //sprint("0\n");
   return -1;
  
+}
+ssize_t sys_user_exec1(char *s,char *para)
+{
+  //sprint("o\n");  //sprint();
+  //sprint("%s\n",apathpa);
+  /// /bin/app_mkdir
+  // int fd=do_open(pathpa,O_RDWR | O_CREAT);
+  //process *st=alloc_page();
+  syscall_load_bincode_from_host_elf(current[readtp()],s,para);
+  // //sprint("fd:%d\n",fd);
+  // //sprint("0\n");
+  return -1;
+
 }
 ssize_t sys_user_ccwd(char *path){
   //char *path1=path;
@@ -880,6 +964,8 @@ ssize_t sys_user_ccwd(char *path){
     //sprint("change1:%s\n",path);
     //strcpy(user)
   }
+  else
+    strcpy(current[readtp()]->pfiles->cwd->name,path1);
   return 0;
 }
 //路径读
@@ -896,6 +982,26 @@ ssize_t sys_user_rcwd(char *path){
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
+
+
+ssize_t sys_user_gets(char *s){
+  uint64 tp=read_tp();
+  assert(current[tp]);
+ char *pa=user_va_to_pa(current[tp]->pagetable,(void *)s);
+ char c;
+ while(1)
+ {
+  c=vgetc(stdin);
+  if(c!='\n')
+    *pa=c;
+  else 
+    break;
+  pa=pa+1;
+ }
+ *pa='\0';
+  return 0;  
+}
+
 ssize_t sys_user_printpa(uint64 va)
 {
   //一个虚拟地址的8 9位为rsw未被使用可用来标记是不是写时复制场景
@@ -972,6 +1078,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_sem_V(a1);
     case SYS_user_printpa:
       return sys_user_printpa(a1);
+    case SYS_user_gets:
+      return sys_user_gets((char *)a1);
+    case SYS_user_exec1:
+      return sys_user_exec1((char *)a1,(char*)a2);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

@@ -76,6 +76,8 @@ void  switch_to(process* proc) {
   //sprint("%x\n",user_satp);
   //uint64 pa=*(uint64 *)user_va_to_pa(proc->pagetable,(void *)(0x116f8));
   //sprint("%x\n",pa);
+  //sprint("switch sp%x\n",current[tp]->trapframe->regs.sp);
+  //sprint("11\n");
   return_to_user(proc->trapframe, user_satp);
   
 }
@@ -172,6 +174,7 @@ process* alloc_process() {
   //sprint("alloc pagetable:%x\n",procs[i].pagetable);
    procs[i].status = USED;
   sem_V(&count_3);
+  //sprint("proc :sp%x\n",procs[i].trapframe->regs.sp);
   return &procs[i];
 }
 
@@ -185,16 +188,31 @@ int free_process( process* proc ) {
   // as it is different from regular OS, which needs to run 7x24.
   uint64 tp=read_tp();
   for( int i=0; i<NPROC; i++ )
-    if( procs[i].pid==proc->pid)
+    if(procs[i].pid==proc->pid)
     {
       procs[i].status=ZOMBIE;
+      //sprint("111\n");
     }
    
   proc->status = ZOMBIE;
 
   return 0;
 }
-
+int free_p( process* proc ) {
+  // we set the status to ZOMBIE, but cannot destruct its vm space immediately.
+  // since proc can be current process, and its user kernel stack is currently in use!
+  // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
+  // as it is different from regular OS, which needs to run 7x24.
+  uint64 tp=read_tp();
+  for( int i=0; i<NPROC; i++ )
+    if(procs[i].pid==proc->pid)
+    {
+      procs[i].status=ZOMBIE;
+      //sprint("free p:%d",procs[i].pid);
+      //sprint("111\n");
+    }
+  return 0;
+}
 //
 // implements fork syscal in kernel. added @lab3_1
 // basic idea here is to first allocate an empty process (child), then duplicate the
@@ -207,7 +225,7 @@ int do_fork( process* parent)
   uint64 tp=read_tp();
   sprint( "will fork a child from parent %d.\n", parent->pid );
   process* child = alloc_process();
-
+  //sprint("sp1%x\n",child->trapframe->regs.sp);
   for( int i=0; i<parent->total_mapped_region; i++ ){
     // browse parent's vm space, and copy its trapframe and data segments,
     // map its code segment.
@@ -221,24 +239,24 @@ int do_fork( process* parent)
         break;
       case HEAP_SEGMENT:
       {
-        // build a same heap for child process.
-
-        // convert free_pages_address into a filter to skip reclaimed blocks in the heap
-        // when mapping the heap blocks
+        {
         int free_block_filter[MAX_HEAP_PAGES];
         memset(free_block_filter, 0, MAX_HEAP_PAGES);
         uint64 heap_bottom = parent->user_heap.heap_bottom;
-        for (int i = 0; i < parent->user_heap.free_pages_count; i++) {
+        for (int i = 0; i < parent->user_heap.free_pages_count; i++)
+        {
           int index = (parent->user_heap.free_pages_address[i] - heap_bottom) / PGSIZE;
           free_block_filter[index] = 1;
         }
 
         // copy and map the heap blocks
         for (uint64 heap_block = current[tp]->user_heap.heap_bottom;
-             heap_block < current[tp]->user_heap.heap_top; heap_block += PGSIZE) {
-          if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
+             heap_block < current[tp]->user_heap.heap_top; heap_block += PGSIZE)
+        {
+          if (free_block_filter[(heap_block - heap_bottom) / PGSIZE]) // skip free blocks
             continue;
-          //sprint("heap:%x\n",heap_block);
+          
+           //sprint("heap:%x\n",heap_block);
           pte_t *pte;
           pte = page_walk((pagetable_t)child->pagetable, heap_block, 1);
           //sprint("%x\n",pte);
@@ -248,10 +266,12 @@ int do_fork( process* parent)
           //void* child_pa =(void *)parent_pa;
           // void *child_pa;
           // memcpy(child_pa, (void*)lookup_pa(parent->pagetable, heap_block), PGSIZE);
-          uint64 child_pa=lookup_pa((pagetable_t)parent->pagetable, heap_block);
-          user_vm_map((pagetable_t)child->pagetable, heap_block, PGSIZE, (uint64)child_pa,
-                      prot_to_type(PROT_READ, 1));
+          // COW: just map (not cp) heap here
+          uint64 child_pa = lookup_pa(parent->pagetable, heap_block);
+          user_vm_map((pagetable_t)child->pagetable, heap_block, PGSIZE, child_pa, prot_to_type(PROT_READ | PROT_COW, 1));
         }
+       }
+      
 
         child->mapped_info[HEAP_SEGMENT].npages = parent->mapped_info[HEAP_SEGMENT].npages;
 
@@ -272,10 +292,9 @@ int do_fork( process* parent)
         // parent->mapped_info[i]
         
         // lookup_pa(parent->pagetable,parent->mapped_info[i].va);
-        user_vm_map((pagetable_t)child->pagetable,parent->mapped_info[i].va,PGSIZE,lookup_pa((pagetable_t)parent->pagetable,parent->mapped_info[i].va),prot_to_type(PROT_READ | PROT_EXEC, 1));
-        // panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
-        // after mapping, register the vm region (do not delete codes below!)
-        sprint("do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",(uint64)lookup_pa((pagetable_t)parent->pagetable,parent->mapped_info[i].va),(uint64)parent->mapped_info[i].va);
+        uint64 va = parent->mapped_info[i].va, size = parent->mapped_info[i].npages * PGSIZE, pa = lookup_pa(parent->pagetable, parent->mapped_info[i].va);
+        int perm = prot_to_type(PROT_EXEC | PROT_READ, 1);
+        map_pages(child->pagetable, va, size, pa, perm);
 
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
         child->mapped_info[child->total_mapped_region].npages =parent->mapped_info[i].npages;
@@ -308,6 +327,7 @@ int do_fork( process* parent)
   child->trapframe->regs.a0 = 0;
   child->parent = parent;
   insert_to_ready_queue( child );
+  //sprint("sp2%x\n",child->trapframe->regs.sp);
   //sprint("111\n");
   return child->pid;
 }
@@ -380,6 +400,7 @@ ssize_t process_wait(int pid)
     if(flag==1)
     {
       insert_to_wait_queue(current[tp]);//两个都在it里因此会出现碰到process0以为当前调度已经完成的情况
+      //sprint("procs[i].sp:%x\n",procs[i].trapframe->regs.sp);
       schedule(0);
       return pid;
     }

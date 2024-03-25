@@ -26,6 +26,7 @@ void shutdown(int) __attribute__((noreturn));
 
 void do_panic(const char* s, ...) __attribute__((noreturn));
 void kassert_fail(const char* s) __attribute__((noreturn));
+char vgetc(spike_file_t* f);
 
 //void shutdown(int code);
 
